@@ -6,8 +6,10 @@ use sfml::window::{Event, Key, Style, VideoMode};
 use crate::utils::Renderer;
 
 fn main() {
+    // maximum iteration count per pixel
     let max_it = 100;
 
+    // julia set constant and it's real and imaginary part increments
     let mut c = Vector2f::new(0.2, -0.6);
     let c_increment_r = Vector2f::new(0.05, 0.0);
     let c_increment_i = Vector2f::new(0.0, 0.05);
@@ -26,6 +28,7 @@ fn main() {
     let renderer = Renderer::new(window_size, 16);
 
     while window.is_open() {
+        // event loop
         while let Some(event) = window.poll_event() {
             match event {
                 Event::Closed | Event::KeyPressed { code: Key::Escape, .. } => window.close(),
@@ -37,6 +40,7 @@ fn main() {
             }
         }
 
+        // rendering
         window.clear(Color::BLACK);
         renderer.render(&mut window, c, max_it);
         window.display();
