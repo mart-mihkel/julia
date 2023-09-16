@@ -1,48 +1,75 @@
+#[macro_use]
+extern crate glium;
+
 mod utils;
 
-use sfml::graphics::{Color, RenderTarget, RenderWindow};
-use sfml::system::{Vector2f, Vector2u};
-use sfml::window::{Event, Key, Style, VideoMode};
-use crate::utils::Renderer;
+use std::fs;
+use std::path::Path;
+use glium::{Display, IndexBuffer, Program, Surface, VertexBuffer};
+use glium::glutin::ContextBuilder;
+use glium::glutin::dpi::LogicalSize;
+use glium::glutin::event::{Event, VirtualKeyCode, WindowEvent};
+use glium::glutin::event_loop::EventLoop;
+use glium::glutin::window::WindowBuilder;
+use glium::index::PrimitiveType;
 
 fn main() {
-    // maximum iteration count per pixel
-    let max_it = 100;
+    let event_loop = EventLoop::new();
+    let wb = WindowBuilder::new()
+        .with_inner_size(LogicalSize::new(800.0, 800.0))
+        .with_title("Julia");
+    let cb = ContextBuilder::new();
+    let display = Display::new(wb, cb, &event_loop).unwrap();
 
-    // julia set constant and it's real and imaginary part increments
-    let mut c = Vector2f::new(0.2, -0.6);
-    let c_increment_r = Vector2f::new(0.05, 0.0);
-    let c_increment_i = Vector2f::new(0.0, 0.05);
+    // load screen
+    let positions = VertexBuffer::new(&display, &utils::VERTICES).unwrap();
+    let indices = IndexBuffer::new(&display, PrimitiveType::TrianglesList, &utils::INDICES).unwrap();
 
-    let window_size = Vector2u::new(1920, 1080);
-    let mut window = RenderWindow::new(
-        VideoMode::new(window_size.x, window_size.y, 24),
-        "Julia",
-        Style::FULLSCREEN,
-        &Default::default(),
-    );
+    // load shaders
+    let vertex_shader = fs::read_to_string(Path::new("src/shader/shader.vert")).unwrap();
+    let fragment_shader = fs::read_to_string(Path::new("src/shader/shader.frag")).unwrap();
+    let program = Program::from_source(&display, &vertex_shader, &fragment_shader, None).unwrap();
 
-    window.set_framerate_limit(60);
-    window.set_mouse_cursor_visible(false);
+    let mut julia_c = [0.2, -0.6, 0.0f32];
+    let zoom = 2.5f32;
 
-    let renderer = Renderer::new(window_size, 16);
-
-    while window.is_open() {
-        // event loop
-        while let Some(event) = window.poll_event() {
-            match event {
-                Event::Closed | Event::KeyPressed { code: Key::Escape, .. } => window.close(),
-                Event::KeyPressed { code: Key::Right, .. } => c += c_increment_r,
-                Event::KeyPressed { code: Key::Left, .. } => c -= c_increment_r,
-                Event::KeyPressed { code: Key::Up, .. } => c += c_increment_i,
-                Event::KeyPressed { code: Key::Down, .. } => c -= c_increment_i,
-                _ => {}
+    event_loop.run(move |event, _, control_flow| {
+        match event {
+            Event::WindowEvent { event, .. } => {
+                match event {
+                    WindowEvent::CloseRequested => control_flow.set_exit(),
+                    WindowEvent::KeyboardInput { input, .. } => {
+                        if let Some(key) = input.virtual_keycode {
+                            match key {
+                                // todo zoom
+                                VirtualKeyCode::Left => julia_c[0] += 0.01,
+                                VirtualKeyCode::Right => julia_c[0] -= 0.01,
+                                VirtualKeyCode::Up => julia_c[1] += 0.01,
+                                VirtualKeyCode::Down => julia_c[1] -= 0.01,
+                                VirtualKeyCode::Escape => control_flow.set_exit(),
+                                _ => ()
+                            }
+                            display.gl_window().window().request_redraw();
+                        }
+                    }
+                    _ => ()
+                }
             }
-        }
+            Event::RedrawRequested(_) => {
 
-        // rendering
-        window.clear(Color::BLACK);
-        renderer.render(&mut window, c, max_it);
-        window.display();
-    }
+                // rendering
+                let mut target = display.draw();
+                target.clear_color(0.0, 0.0, 0.0, 1.0);
+                target.draw(
+                    &positions,
+                    &indices,
+                    &program,
+                    &uniform! { zoom: zoom, julia_c: julia_c },
+                    &Default::default(),
+                ).unwrap();
+                target.finish().unwrap();
+            }
+            _ => ()
+        }
+    });
 }

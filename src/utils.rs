@@ -1,7 +1,3 @@
-mod thread_pool;
-mod grid;
-mod renderer;
+mod vetrex;
 
-pub use thread_pool::ThreadPool;
-pub use grid::Grid;
-pub use renderer::Renderer;
+pub use vetrex::{VERTICES, INDICES};
