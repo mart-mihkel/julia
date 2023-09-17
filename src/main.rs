@@ -30,8 +30,9 @@ fn main() {
     let fragment_shader = fs::read_to_string(Path::new("src/shader/shader.frag")).unwrap();
     let program = Program::from_source(&display, &vertex_shader, &fragment_shader, None).unwrap();
 
-    let mut julia_c = [0.2, -0.6, 0.0f32];
-    let zoom = 2.5f32;
+    let mut julia_c = [0.0, 0.0f32];
+    let mut offset = [0.0, 0.0f32];
+    let mut zoom = 1.0f32;
 
     event_loop.run(move |event, _, control_flow| {
         match event {
@@ -40,12 +41,22 @@ fn main() {
                     WindowEvent::CloseRequested => control_flow.set_exit(),
                     WindowEvent::KeyboardInput { input, .. } => {
                         if let Some(key) = input.virtual_keycode {
+                            let zoom_coef = 0.01 * zoom;
                             match key {
-                                // todo zoom
-                                VirtualKeyCode::Left => julia_c[0] += 0.01,
-                                VirtualKeyCode::Right => julia_c[0] -= 0.01,
-                                VirtualKeyCode::Up => julia_c[1] += 0.01,
-                                VirtualKeyCode::Down => julia_c[1] -= 0.01,
+                                // julia constant
+                                VirtualKeyCode::Left => julia_c[0] += zoom_coef,
+                                VirtualKeyCode::Right => julia_c[0] -= zoom_coef,
+                                VirtualKeyCode::Up => julia_c[1] += zoom_coef,
+                                VirtualKeyCode::Down => julia_c[1] -= zoom_coef,
+                                // movement
+                                VirtualKeyCode::D => offset[0] += zoom_coef,
+                                VirtualKeyCode::A => offset[0] -= zoom_coef,
+                                VirtualKeyCode::W => offset[1] += zoom_coef,
+                                VirtualKeyCode::S => offset[1] -= zoom_coef,
+                                // zoom
+                                VirtualKeyCode::Period => zoom *= 1.05,
+                                VirtualKeyCode::Comma => zoom *= 0.95,
+                                // exit
                                 VirtualKeyCode::Escape => control_flow.set_exit(),
                                 _ => ()
                             }
@@ -56,17 +67,16 @@ fn main() {
                 }
             }
             Event::RedrawRequested(_) => {
-
                 // rendering
+                let uniforms = uniform! {
+                    julia_c: julia_c,
+                    offset: offset,
+                    zoom: zoom,
+                };
+
                 let mut target = display.draw();
                 target.clear_color(0.0, 0.0, 0.0, 1.0);
-                target.draw(
-                    &positions,
-                    &indices,
-                    &program,
-                    &uniform! { zoom: zoom, julia_c: julia_c },
-                    &Default::default(),
-                ).unwrap();
+                target.draw(&positions, &indices, &program, &uniforms, &Default::default()).unwrap();
                 target.finish().unwrap();
             }
             _ => ()

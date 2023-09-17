@@ -1,30 +1,24 @@
 #version 140
-#define MAXIMUM_ITERATIONS 100
+#define MAXIMUM_ITERATIONS 250
 #define MAXIMUM_DISTANCE_SQUARED 4.0
 
 in vec4 gl_FragCoord;
 
+uniform vec2 julia_c;
+uniform vec2 offset;
 uniform float zoom;
-uniform vec3 julia_c;
 
 out vec4 color;
 
 int julia_iter() {
-    float re = (gl_FragCoord.x / 800.0 - 0.5) * zoom;
-    float im = (gl_FragCoord.y / 800.0 - 0.5) * zoom;
-
-    float re_c = re;
-    float im_c = im;
+    // [0.0, 800.0] -> [0.0, 4.0] -> [-2.0, 2.0] -> scale and offset
+    float re = ((gl_FragCoord.x / 200.0) - 2.0) * zoom + offset.x;
+    float im = ((gl_FragCoord.y / 200.0) - 2.0) * zoom + offset.y;
 
     float dist2 = re * re + im * im;
     int it = 0;
-
     while (it < MAXIMUM_ITERATIONS && dist2 < MAXIMUM_DISTANCE_SQUARED) {
         float temp_re = re;
-
-        // iteration step for mandelbrot set
-        //re = re * re - im * im + re_c;
-        //im = 2.0 * im * temp_re + im_c;
 
         re = re * re - im * im + julia_c.x;
         im = 2.0 * im * temp_re + julia_c.y;
@@ -36,9 +30,18 @@ int julia_iter() {
     return it;
 }
 
-void main() {
+vec4 make_color() {
     int it = julia_iter();
-    float it_ratio = float(it) / MAXIMUM_ITERATIONS;
 
-    color = vec4(0.0, it_ratio, 0.0, 1.0);
+    // in the set -> black
+    if (it == MAXIMUM_ITERATIONS) {
+        return vec4(0.0, 0.0, 0.0, 1.0);
+    }
+
+    float ratio = float(it) / MAXIMUM_ITERATIONS;
+    return vec4(0.0, 0.0, ratio, 1.0);
+}
+
+void main() {
+    color = make_color();
 }
