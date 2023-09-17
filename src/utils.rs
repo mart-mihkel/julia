@@ -1,3 +1,3 @@
-mod vetrex;
+mod screen;
 
-pub use vetrex::{VERTICES, INDICES};
+pub use screen::{VERTICES, INDICES};
