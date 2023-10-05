@@ -4,24 +4,32 @@
 
 in vec4 gl_FragCoord;
 
-uniform vec2 julia_c;
+uniform vec2 parameter;
 uniform vec2 offset;
 uniform float zoom;
+uniform bool mandelbrot;
 
 out vec4 color;
 
-int julia_iter() {
+int iter() {
     // [0.0, 800.0] -> [0.0, 4.0] -> [-2.0, 2.0] -> scale and offset
     float re = ((gl_FragCoord.x / 200.0) - 2.0) * zoom + offset.x;
     float im = ((gl_FragCoord.y / 200.0) - 2.0) * zoom + offset.y;
+
+    float re_const = parameter.x;
+    float im_const = parameter.y;
+    if (mandelbrot) {
+        re_const = re;
+        im_const = im;
+    }
 
     float dist2 = re * re + im * im;
     int it = 0;
     while (it < MAXIMUM_ITERATIONS && dist2 < MAXIMUM_DISTANCE_SQUARED) {
         float temp_re = re;
 
-        re = re * re - im * im + julia_c.x;
-        im = 2.0 * im * temp_re + julia_c.y;
+        re = re * re - im * im + re_const;
+        im = 2.0 * im * temp_re + im_const;
 
         dist2 = re * re + im * im;
         it++;
@@ -31,7 +39,7 @@ int julia_iter() {
 }
 
 vec4 make_color() {
-    int it = julia_iter();
+    int it = iter();
 
     // in the set -> black
     if (it == MAXIMUM_ITERATIONS) {
