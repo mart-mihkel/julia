@@ -1,3 +1,3 @@
 mod screen;
 
-pub use screen::{VERTICES, INDICES};
+pub use screen::{Vertex, VERTICES, INDICES};
