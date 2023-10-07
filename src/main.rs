@@ -3,14 +3,14 @@ extern crate glium;
 
 mod screen;
 mod render;
+mod event_handler;
 
 use std::fmt::Pointer;
 use std::time::Instant;
 use glium::{Display, Surface};
 use glium::glutin::ContextBuilder;
 use glium::glutin::dpi::LogicalSize;
-use glium::glutin::event::{Event, KeyboardInput, VirtualKeyCode, WindowEvent};
-use glium::glutin::event_loop::{ControlFlow, EventLoop};
+use glium::glutin::event_loop::EventLoop;
 use glium::glutin::window::WindowBuilder;
 use clap::Parser;
 
@@ -57,36 +57,11 @@ fn main() {
 
     let mut render_end = render::render(args.julia_param, &display, &vertices, &indices, &program);
     event_loop.run(move |event, _, control_flow| {
-        handle_event(event, control_flow);
+        event_handler::handle_event(event, control_flow);
 
         let secs_since = Instant::now().duration_since(render_end).as_secs_f32();
         if secs_since > 1.0 / args.fps as f32 {
             render_end = render::render(args.julia_param, &display, &vertices, &indices, &program);
         }
     });
-}
-
-fn handle_event(event: Event<()>, control_flow: &mut ControlFlow) {
-    match event {
-        Event::WindowEvent { event, .. } => handle_window_event(event, control_flow),
-        _ => ()
-    }
-}
-
-fn handle_window_event(event: WindowEvent, control_flow: &mut ControlFlow) {
-    match event {
-        WindowEvent::CloseRequested => control_flow.set_exit(),
-        WindowEvent::KeyboardInput { input, .. } => handle_keyboard_input(input, control_flow),
-        _ => ()
-    }
-}
-
-fn handle_keyboard_input(input: KeyboardInput, control_flow: &mut ControlFlow) {
-    if let Some(key) = input.virtual_keycode {
-        match key {
-            // exit
-            VirtualKeyCode::Escape => control_flow.set_exit(),
-            _ => ()
-        }
-    }
 }
