@@ -4,10 +4,9 @@
 
 in vec4 gl_FragCoord;
 
-uniform vec2 parameter;
+uniform vec2 julia_param;
 uniform vec2 offset;
 uniform float zoom;
-uniform bool mandelbrot;
 
 out vec4 color;
 
@@ -16,12 +15,8 @@ int iter() {
     float re = ((gl_FragCoord.x / 200.0) - 2.0) * zoom + offset.x;
     float im = ((gl_FragCoord.y / 200.0) - 2.0) * zoom + offset.y;
 
-    float re_const = parameter.x;
-    float im_const = parameter.y;
-    if (mandelbrot) {
-        re_const = re;
-        im_const = im;
-    }
+    float re_const = julia_param.x;
+    float im_const = julia_param.y;
 
     float dist2 = re * re + im * im;
     int it = 0;
