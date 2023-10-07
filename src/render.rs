@@ -124,8 +124,7 @@ impl RenderState {
     }
 
     fn should_render(&self) -> bool {
-        let time_since_render = self.last_render.elapsed().as_secs_f32();
-        time_since_render > self.fps.powi(-1)
+        self.last_render.elapsed().as_secs_f32() > self.fps.powi(-1)
     }
 }
 
