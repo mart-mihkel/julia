@@ -1,6 +1,25 @@
 use std::time::Instant;
 use glium::{Display, IndexBuffer, Program, Surface, VertexBuffer};
-use crate::screen::Vertex;
+use glium::index::PrimitiveType;
+
+#[derive(Copy, Clone)]
+struct Vertex {
+    position: (f32, f32),
+}
+
+implement_vertex!(Vertex, position);
+
+const VERTICES: [Vertex; 4] = [
+    Vertex { position: (-1.0, -1.0) },
+    Vertex { position: (1.0, 1.0) },
+    Vertex { position: (-1.0, 1.0) },
+    Vertex { position: (1.0, -1.0) },
+];
+
+const INDICES: [u8; 6] = [
+    0, 1, 2,
+    0, 3, 1,
+];
 
 const VERTEX_SHADER: &str = "
     #version 140
@@ -65,21 +84,48 @@ const FRAGMENT_SHADER: &str = "
     }
 ";
 
-pub fn load_shaders(facade: &Display) -> Program {
-    Program::from_source(facade, VERTEX_SHADER, FRAGMENT_SHADER, None).unwrap()
+pub struct RenderState {
+    last_render: Instant,
+    vertices: VertexBuffer<Vertex>,
+    indices: IndexBuffer<u8>,
+    program: Program,
+    facade: Display,
+    fps: f32,
 }
 
-pub fn render(julia_param: (f32, f32), display: &Display, vertices: &VertexBuffer<Vertex>, indices: &IndexBuffer<u16>, program: &Program) -> Instant {
-    let uniforms = uniform! {
-        julia_param: julia_param,
-        offset: (0f32, 0f32),
-        zoom: 0.5f32,
-    };
+impl RenderState {
+    pub fn new(facade: Display, fps: f32) -> RenderState {
+        let vertices = VertexBuffer::new(&facade, &VERTICES).unwrap();
+        let indices = IndexBuffer::new(&facade, PrimitiveType::TrianglesList, &INDICES).unwrap();
+        let program = Program::from_source(&facade, VERTEX_SHADER, FRAGMENT_SHADER, None).unwrap();
+        let last_render = Instant::now();
 
-    let mut target = display.draw();
-    target.clear_color(0.0, 0.0, 0.0, 1.0);
-    target.draw(vertices, indices, program, &uniforms, &Default::default()).unwrap();
-    target.finish().unwrap();
+        RenderState { facade, vertices, indices, program, fps, last_render }
+    }
 
-    Instant::now()
+    pub fn render(&mut self, julia_param: (f32, f32)) {
+        // count fps
+        if !self.should_render() { return; }
+
+        // fragment shader parameters
+        let uniforms = uniform! {
+            julia_param: julia_param,
+            offset: (0f32, 0f32),
+            zoom: 0.6f32,
+        };
+
+        // render
+        let mut target = self.facade.draw();
+        target.clear_color(0.0, 0.0, 0.0, 1.0);
+        target.draw(&self.vertices, &self.indices, &self.program, &uniforms, &Default::default()).unwrap();
+        target.finish().unwrap();
+
+        self.last_render = Instant::now();
+    }
+
+    fn should_render(&self) -> bool {
+        let time_since_render = self.last_render.elapsed().as_secs_f32();
+        time_since_render > self.fps.powi(-1)
+    }
 }
+
