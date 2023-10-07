@@ -1,12 +1,12 @@
 use glium::glutin::event::{Event, KeyboardInput, VirtualKeyCode, WindowEvent};
 use glium::glutin::event_loop::ControlFlow;
 
-pub struct EventHandler {}
+pub struct EventUtil;
 
-impl EventHandler {
+impl EventUtil {
     pub(crate) fn handle_event(event: Event<()>, control_flow: &mut ControlFlow) {
         match event {
-            Event::WindowEvent { event, .. } => EventHandler::handle_window_event(event, control_flow),
+            Event::WindowEvent { event, .. } => EventUtil::handle_window_event(event, control_flow),
             _ => ()
         }
     }
@@ -14,7 +14,7 @@ impl EventHandler {
     fn handle_window_event(event: WindowEvent, control_flow: &mut ControlFlow) {
         match event {
             WindowEvent::CloseRequested => control_flow.set_exit(),
-            WindowEvent::KeyboardInput { input, .. } => EventHandler::handle_keyboard_input(input, control_flow),
+            WindowEvent::KeyboardInput { input, .. } => EventUtil::handle_keyboard_input(input, control_flow),
             _ => ()
         }
     }
