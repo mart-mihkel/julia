@@ -1,34 +1,46 @@
 #[macro_use]
 extern crate glium;
 
-mod utils;
+mod screen;
+mod render;
 
-use std::fs;
-use std::path::Path;
+use std::fmt::Pointer;
 use std::time::Instant;
-use glium::{Display, IndexBuffer, Program, Surface, VertexBuffer};
+use glium::{Display, Surface};
 use glium::glutin::ContextBuilder;
 use glium::glutin::dpi::LogicalSize;
 use glium::glutin::event::{Event, KeyboardInput, VirtualKeyCode, WindowEvent};
 use glium::glutin::event_loop::{ControlFlow, EventLoop};
 use glium::glutin::window::WindowBuilder;
-use glium::index::PrimitiveType;
-use crate::utils::Vertex;
+use clap::Parser;
 
-enum Set {
-    JULIA,
-    MANDLEBROT,
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Frames per second limit
+    #[arg(long, default_value_t = 60)]
+    fps: u8,
+
+    /// Julia parameter
+    #[arg(long, value_parser = Self::parse_complex_number, default_value = "0.355-0.355i")]
+    julia_param: (f32, f32),
 }
 
-struct JuliaArgs {
-    parameter: [f32; 2],
-    offset: [f32; 2],
-    zoom: f32,
-    fps: f32,
-    set: Set,
+impl Args {
+    fn parse_complex_number(s: &str) -> Result<(f32, f32), &'static str> {
+        let loc = s.rfind("+").or_else(|| s.rfind("-")).unwrap();
+        let err = |_| "julia parameter must be a complex number";
+        Ok((
+            s[..loc].parse::<f32>().map_err(err)?,
+            s[loc..s.len() - 1].parse::<f32>().map_err(err)?
+        ))
+    }
 }
 
 fn main() {
+    let args = Args::parse();
+
+    // create window
     let event_loop = EventLoop::new();
     let wb = WindowBuilder::new()
         .with_inner_size(LogicalSize::new(800.0, 800.0))
@@ -37,94 +49,44 @@ fn main() {
     let display = Display::new(wb, cb, &event_loop).unwrap();
 
     // load screen
-    let vertex_buffer = VertexBuffer::new(&display, &utils::VERTICES).unwrap();
-    let index_buffer = IndexBuffer::new(&display, PrimitiveType::TrianglesList, &utils::INDICES).unwrap();
+    let vertices = screen::load_vertices(&display);
+    let indices = screen::load_indices(&display);
 
     // load shaders
-    let vertex_shader = fs::read_to_string(Path::new("src/shader/shader.vert")).unwrap();
-    let fragment_shader = fs::read_to_string(Path::new("src/shader/shader.frag")).unwrap();
-    let program = Program::from_source(&display, &vertex_shader, &fragment_shader, None).unwrap();
+    let program = render::load_shaders(&display);
 
-    let mut args = JuliaArgs {
-        parameter: [0.0, 0.0],
-        offset: [0.0, 0.0],
-        zoom: 1.0,
-        fps: 60.0,
-        set: Set::MANDLEBROT,
-    };
-
-    let mut render_end = render(&args, &display, &vertex_buffer, &index_buffer, &program);
+    let mut render_end = render::render(args.julia_param, &display, &vertices, &indices, &program);
     event_loop.run(move |event, _, control_flow| {
-        handle_event(&mut args, event, control_flow);
+        handle_event(event, control_flow);
 
         let secs_since = Instant::now().duration_since(render_end).as_secs_f32();
-        if secs_since > 1.0 / args.fps {
-            render_end = render(&args, &display, &vertex_buffer, &index_buffer, &program);
+        if secs_since > 1.0 / args.fps as f32 {
+            render_end = render::render(args.julia_param, &display, &vertices, &indices, &program);
         }
     });
 }
 
-fn handle_event(args: &mut JuliaArgs, event: Event<()>, control_flow: &mut ControlFlow) {
+fn handle_event(event: Event<()>, control_flow: &mut ControlFlow) {
     match event {
-        Event::WindowEvent { event, .. } => handle_window_event(args, event, control_flow),
+        Event::WindowEvent { event, .. } => handle_window_event(event, control_flow),
         _ => ()
     }
 }
 
-fn handle_window_event(args: &mut JuliaArgs, event: WindowEvent, control_flow: &mut ControlFlow) {
+fn handle_window_event(event: WindowEvent, control_flow: &mut ControlFlow) {
     match event {
         WindowEvent::CloseRequested => control_flow.set_exit(),
-        WindowEvent::KeyboardInput { input, .. } => handle_keyboard_input(args, input, control_flow),
+        WindowEvent::KeyboardInput { input, .. } => handle_keyboard_input(input, control_flow),
         _ => ()
     }
 }
 
-fn handle_keyboard_input(JuliaArgs { parameter, offset, zoom, set, .. }: &mut JuliaArgs, input: KeyboardInput, control_flow: &mut ControlFlow) {
+fn handle_keyboard_input(input: KeyboardInput, control_flow: &mut ControlFlow) {
     if let Some(key) = input.virtual_keycode {
-        let coef = *zoom * 0.01;
         match key {
-            // julia constant
-            VirtualKeyCode::Left => parameter[0] += coef,
-            VirtualKeyCode::Right => parameter[0] -= coef,
-            VirtualKeyCode::Up => parameter[1] += coef,
-            VirtualKeyCode::Down => parameter[1] -= coef,
-            // movement
-            VirtualKeyCode::D => offset[0] += coef,
-            VirtualKeyCode::A => offset[0] -= coef,
-            VirtualKeyCode::W => offset[1] += coef,
-            VirtualKeyCode::S => offset[1] -= coef,
-            // zoom
-            VirtualKeyCode::Period => *zoom *= 1.02,
-            VirtualKeyCode::Comma => *zoom *= 0.98,
-            // set
-            VirtualKeyCode::M => *set = Set::MANDLEBROT,
-            VirtualKeyCode::J => *set = Set::JULIA,
             // exit
             VirtualKeyCode::Escape => control_flow.set_exit(),
             _ => ()
         }
     }
-}
-
-fn render(args: &JuliaArgs, display: &Display, vertex_buffer: &VertexBuffer<Vertex>, index_buffer: &IndexBuffer<u16>, program: &Program) -> Instant {
-    let uniforms = uniform! {
-        parameter: args.parameter,
-        offset: args.offset,
-        zoom: args.zoom,
-        mandelbrot: match args.set {
-            Set::MANDLEBROT => true,
-            Set::JULIA => false,
-        },
-    };
-
-    let mut target = display.draw();
-    target.clear_color(0.0, 0.0, 0.0, 1.0);
-    target.draw(vertex_buffer, index_buffer, program, &uniforms, &Default::default()).unwrap();
-    target.finish().unwrap();
-
-    Instant::now()
-}
-
-fn iter(JuliaArgs { parameter, offset, zoom, set, .. }: &JuliaArgs) {
-    todo!("bigdecimal iter")
 }
