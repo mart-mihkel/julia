@@ -344,8 +344,6 @@ fn match_keyboard_input(control_flow: &mut ControlFlow, input: &KeyboardInput) {
 }
 
 pub async fn run() {
-    env_logger::init();
-
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_title("Julia")
