@@ -15,14 +15,48 @@ fn vs_main(
     model: VertexInput,
 ) -> VertexOutput {
     var out: VertexOutput;
-    out.color = model.color;
     out.clip_position = vec4<f32>(model.position, 1.0);
     return out;
 }
 
 // Fragment shader
 
+fn iter(position: vec4<f32>) -> i32 {
+    var re: f32 = (position.x / 200.0) - 2.0;
+    var im: f32 = (position.y / 200.0) - 2.0;
+
+    let re_c = 0.355;
+    let im_c = 0.355;
+
+    var dist2: f32 = re * re + im * im;
+    var it: i32 = 0;
+
+    loop {
+        if (it == 250 || dist2 >= 4.0) {
+            break;
+        }
+
+        var temp = re;
+        re = temp * temp - im * im + re_c;
+        im = 2.0 * im * temp + im_c;
+
+        continuing {
+            dist2 = re * re + im * im;
+            it++;
+        }
+    }
+
+    return it;
+}
+
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    return vec4<f32>(in.color, 1.0);
+    let it = iter(in.clip_position);
+
+    var b: f32 = f32(it) / 250.0;
+    if (it == 250) {
+        b = 0.0;
+    }
+
+    return vec4<f32>(0.0, 0.0, b, 1.0);
 }
