@@ -1,4 +1,4 @@
-use winit::event::{Event, VirtualKeyCode, WindowEvent};
+use winit::event::{Event, KeyboardInput, VirtualKeyCode, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::{Window, WindowBuilder};
 use wgpu::util::DeviceExt;
@@ -250,34 +250,57 @@ struct Args {
 
     /// Julia parameter
     #[arg(long, value_parser = Self::parse_complex_number, default_value = "0.355-0.355i")]
-    julia_param: (f32, f32),
-
-    /// Window size
-    #[arg(long, value_parser = Self::parse_window_size, default_value = "800x800")]
-    window_size: PhysicalSize<u32>,
+    julia_param: [f32; 2],
 }
 
 impl Args {
-    fn parse_complex_number(s: &str) -> Result<(f32, f32), &'static str> {
+    fn parse_complex_number(s: &str) -> Result<[f32; 2], &'static str> {
         const MESSAGE: &str = "uh oh!";
         let loc = s.rfind("+").or_else(|| s.rfind("-")).ok_or(MESSAGE)?;
         let err = |_| MESSAGE;
 
-        Ok((
+        Ok([
             s[..loc].parse::<f32>().map_err(err)?,
             s[loc..s.len() - 1].parse::<f32>().map_err(err)?
-        ))
+        ])
     }
+}
 
-    fn parse_window_size(s: &str) -> Result<PhysicalSize<u32>, &'static str> {
-        const MESSAGE: &str = "uh oh!";
-        let loc = s.find("x").ok_or(MESSAGE)?;
-        let err = |_| MESSAGE;
+fn match_event(mut state: &mut State, event: Event<()>, control_flow: &mut ControlFlow) {
+    match event {
+        Event::WindowEvent { ref event, window_id }  if window_id == state.window.id() => if !state.input(event) {
+            match_window_event(&mut state, control_flow, event);
+        }
+        Event::RedrawRequested(window_id) if window_id == state.window.id() => {
+            state.update();
+            match state.render() {
+                Ok(_) => {}
+                Err(wgpu::SurfaceError::Lost) => state.resize(state.size),
+                Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
+                Err(e) => eprintln!("{:?}", e),
+            }
+        }
+        Event::MainEventsCleared => state.window.request_redraw(),
+        _ => ()
+    }
+}
 
-        Ok(PhysicalSize::new(
-            s[..loc].parse::<u32>().map_err(err)?,
-            s[loc + 1..].parse::<u32>().map_err(err)?,
-        ))
+fn match_window_event(state: &mut State, control_flow: &mut ControlFlow, event: &WindowEvent) {
+    match event {
+        WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+        WindowEvent::KeyboardInput { input, .. } => match_keyboard_input(control_flow, input),
+        WindowEvent::Resized(physical_size) => state.resize(*physical_size),
+        WindowEvent::ScaleFactorChanged { new_inner_size, .. } => state.resize(**new_inner_size),
+        _ => ()
+    }
+}
+
+fn match_keyboard_input(control_flow: &mut ControlFlow, input: &KeyboardInput) {
+    if let Some(key) = input.virtual_keycode {
+        match key {
+            VirtualKeyCode::Escape => *control_flow = ControlFlow::Exit,
+            _ => ()
+        }
     }
 }
 
@@ -289,50 +312,12 @@ pub async fn run() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_title("Julia")
-        .with_inner_size(args.window_size)
+        .with_inner_size(PhysicalSize::new(800, 800))
         .with_decorations(false)
         .build(&event_loop)
         .unwrap();
 
     let mut state = State::new(window).await;
 
-    event_loop.run(move |event, _, control_flow| {
-        match event {
-            Event::WindowEvent { ref event, window_id }  if window_id == state.window.id() => if !state.input(event) {
-                match event {
-                    WindowEvent::CloseRequested => control_flow.set_exit(),
-                    WindowEvent::KeyboardInput { input, .. } => {
-                        if let Some(key) = input.virtual_keycode {
-                            match key {
-                                // exit
-                                VirtualKeyCode::Escape => control_flow.set_exit(),
-                                _ => ()
-                            }
-                        }
-                    }
-                    WindowEvent::Resized(physical_size) => state.resize(*physical_size),
-                    WindowEvent::ScaleFactorChanged { new_inner_size, .. } => state.resize(**new_inner_size),
-                    _ => ()
-                }
-            }
-            Event::RedrawRequested(window_id) if window_id == state.window.id() => {
-                state.update();
-                match state.render() {
-                    Ok(_) => {}
-                    // Reconfigure the surface if lost
-                    Err(wgpu::SurfaceError::Lost) => state.resize(state.size),
-                    // The system is out of memory, we should probably quit
-                    Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
-                    // All other errors (Outdated, Timeout) should be resolved by the next frame
-                    Err(e) => eprintln!("{:?}", e),
-                }
-            }
-            Event::MainEventsCleared => {
-                // RedrawRequested will only trigger once, unless we manually
-                // request it.
-                state.window.request_redraw();
-            }
-            _ => ()
-        }
-    });
+    event_loop.run(move |event, _, control_flow| match_event(&mut state, event, control_flow));
 }
