@@ -1,5 +1,4 @@
 // Vertex shader
-
 struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) color: vec3<f32>,
@@ -20,13 +19,20 @@ fn vs_main(
 }
 
 // Fragment shader
+struct JuliaUniforms {
+    constant: vec2<f32>,
+};
+
+@group(0)
+@binding(0)
+var<uniform> julia_uniforms: JuliaUniforms;
 
 fn iter(position: vec4<f32>) -> i32 {
     var re: f32 = (position.x / 200.0) - 2.0;
     var im: f32 = (position.y / 200.0) - 2.0;
 
-    let re_c = 0.355;
-    let im_c = 0.355;
+    let re_c = julia_uniforms.constant.x;
+    let im_c = julia_uniforms.constant.y;
 
     var dist2: f32 = re * re + im * im;
     var it: i32 = 0;

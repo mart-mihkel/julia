@@ -45,6 +45,12 @@ const INDICES: &[u16] = &[
     0, 3, 1,
 ];
 
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct JuliaUniforms {
+    c: [f32; 2],
+}
+
 struct State {
     _args: Args,
     surface: wgpu::Surface,
@@ -53,6 +59,7 @@ struct State {
     config: wgpu::SurfaceConfiguration,
     size: PhysicalSize<u32>,
     window: Window,
+    julia_bind_group: wgpu::BindGroup,
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
@@ -61,7 +68,7 @@ struct State {
 }
 
 impl State {
-    async fn new(window: Window, _args: Args) -> Self {
+    async fn new(window: Window, args: Args) -> Self {
         // the instance is a handle to our GPU
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::VULKAN,
@@ -72,19 +79,17 @@ impl State {
         // state owns the window so this should be safe
         let surface = unsafe { instance.create_surface(&window) }.unwrap();
 
-        let adapter_request_options = wgpu::RequestAdapterOptions {
+        let adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::default(),
             compatible_surface: Some(&surface),
             force_fallback_adapter: false,
-        };
-        let adapter = instance.request_adapter(&adapter_request_options).await.unwrap();
+        }).await.unwrap();
 
-        let device_descriptor = wgpu::DeviceDescriptor {
+        let (device, queue) = adapter.request_device(&wgpu::DeviceDescriptor {
             features: wgpu::Features::empty(),
             label: None,
             limits: Default::default(),
-        };
-        let (device, queue) = adapter.request_device(&device_descriptor, None).await.unwrap();
+        }, None).await.unwrap();
 
         // surface
         let size = window.inner_size();
@@ -106,14 +111,47 @@ impl State {
 
         let shader = device.create_shader_module(wgpu::include_wgsl!("shader.wgsl"));
 
-        // render pipeline
-        let pipeline_layout_descriptor = wgpu::PipelineLayoutDescriptor {
-            label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[],
-            push_constant_ranges: &[],
-        };
-        let render_pipeline_layout = device.create_pipeline_layout(&pipeline_layout_descriptor);
+        // uniforms
+        let julia_uniforms = JuliaUniforms { c: args.constant };
+        let julia_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Julia uniform buffer"),
+            contents: bytemuck::cast_slice(&[julia_uniforms]),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+        let julia_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Julia bind group layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }
+            ],
+        });
+        let julia_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Julia bind group"),
+            layout: &julia_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: julia_buffer.as_entire_binding(),
+                }
+            ],
+        });
 
+        // render pipeline
+        let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Render Pipeline Layout"),
+            bind_group_layouts: &[
+                &julia_bind_group_layout,
+            ],
+            push_constant_ranges: &[],
+        });
         let vertex_state = wgpu::VertexState {
             module: &shader,
             entry_point: "vs_main",
@@ -143,7 +181,7 @@ impl State {
             mask: !0,
             alpha_to_coverage_enabled: false,
         };
-        let render_pipeline_descriptor = wgpu::RenderPipelineDescriptor {
+        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
             layout: Some(&render_pipeline_layout),
             vertex: vertex_state,
@@ -152,34 +190,32 @@ impl State {
             depth_stencil: None,
             multisample: multisample_state,
             multiview: None,
-        };
-        let render_pipeline = device.create_render_pipeline(&render_pipeline_descriptor);
+        });
 
         // vertex and index buffers
         let _num_vertices = VERTICES.len() as u32;
-        let vertex_buffer_descriptor = wgpu::util::BufferInitDescriptor {
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
             contents: bytemuck::cast_slice(VERTICES),
             usage: wgpu::BufferUsages::VERTEX,
-        };
-        let vertex_buffer = device.create_buffer_init(&vertex_buffer_descriptor);
+        });
 
         let num_indices = INDICES.len() as u32;
-        let index_buffer_descriptor = wgpu::util::BufferInitDescriptor {
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Index Buffer"),
             contents: bytemuck::cast_slice(INDICES),
             usage: wgpu::BufferUsages::INDEX,
-        };
-        let index_buffer = device.create_buffer_init(&index_buffer_descriptor);
+        });
 
         Self {
-            _args,
+            _args: args,
             window,
             surface,
             device,
             queue,
             config,
             size,
+            julia_bind_group,
             render_pipeline,
             vertex_buffer,
             index_buffer,
@@ -230,6 +266,7 @@ impl State {
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
+        render_pass.set_bind_group(0, &self.julia_bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
         render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
@@ -252,7 +289,7 @@ struct Args {
 
     /// Julia parameter
     #[arg(long, value_parser = Self::parse_complex_number, default_value = "0.355-0.355i")]
-    julia_param: [f32; 2],
+    constant: [f32; 2],
 }
 
 impl Args {
