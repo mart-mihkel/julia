@@ -46,6 +46,7 @@ const INDICES: &[u16] = &[
 ];
 
 struct State {
+    _args: Args,
     surface: wgpu::Surface,
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -60,7 +61,7 @@ struct State {
 }
 
 impl State {
-    async fn new(window: Window) -> Self {
+    async fn new(window: Window, _args: Args) -> Self {
         // the instance is a handle to our GPU
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::VULKAN,
@@ -155,7 +156,7 @@ impl State {
         let render_pipeline = device.create_render_pipeline(&render_pipeline_descriptor);
 
         // vertex and index buffers
-        let num_vertices = VERTICES.len() as u32;
+        let _num_vertices = VERTICES.len() as u32;
         let vertex_buffer_descriptor = wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
             contents: bytemuck::cast_slice(VERTICES),
@@ -172,6 +173,7 @@ impl State {
         let index_buffer = device.create_buffer_init(&index_buffer_descriptor);
 
         Self {
+            _args,
             window,
             surface,
             device,
@@ -181,7 +183,7 @@ impl State {
             render_pipeline,
             vertex_buffer,
             index_buffer,
-            _num_vertices: num_vertices,
+            _num_vertices,
             num_indices,
         }
     }
@@ -307,17 +309,15 @@ fn match_keyboard_input(control_flow: &mut ControlFlow, input: &KeyboardInput) {
 pub async fn run() {
     env_logger::init();
 
-    let args = Args::parse();
-
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_title("Julia")
         .with_inner_size(PhysicalSize::new(800, 800))
-        .with_decorations(false)
         .build(&event_loop)
         .unwrap();
 
-    let mut state = State::new(window).await;
+    let args = Args::parse();
+    let mut state = State::new(window, args).await;
 
     event_loop.run(move |event, _, control_flow| match_event(&mut state, event, control_flow));
 }
