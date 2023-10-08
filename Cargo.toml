@@ -4,5 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-glium = "0.32.1"
+wgpu = "0.17.1"
+winit = "0.28.7"
+env_logger = "0.10.0"
+pollster = "0.3.0"
+bytemuck = { version = "1.12", features = ["derive"] }
 clap = { version = "4.4.6", features = ["derive"] }
