@@ -1,3 +1,5 @@
+mod util;
+
 use winit::event::{Event, KeyboardInput, VirtualKeyCode, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::{Window, WindowBuilder};
@@ -7,7 +9,7 @@ use winit::dpi::PhysicalSize;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct Vertex {
+pub struct Vertex {
     position: [f32; 3],
     color: [f32; 3],
 }
@@ -33,6 +35,7 @@ impl Vertex {
     }
 }
 
+// todo use only for gpu
 const VERTICES: &[Vertex] = &[
     Vertex { position: [-1.0, -1.0, 0.0], color: [0.0, 0.0, 0.0] },
     Vertex { position: [1.0, 1.0, 0.0], color: [0.0, 0.0, 0.0] },
@@ -52,7 +55,7 @@ struct JuliaUniforms {
 }
 
 struct State {
-    _args: Args,
+    args: Args,
     surface: wgpu::Surface,
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -61,6 +64,7 @@ struct State {
     window: Window,
     julia_bind_group: wgpu::BindGroup,
     render_pipeline: wgpu::RenderPipeline,
+    vertices: Vec<Vertex>, // todo gpu
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
     _num_vertices: u32,
@@ -168,7 +172,7 @@ impl State {
             targets: &fragment_state_target,
         });
         let primitive_state = wgpu::PrimitiveState {
-            topology: wgpu::PrimitiveTopology::TriangleList,
+            topology: wgpu::PrimitiveTopology::PointList, // todo cpu - point, gpu - triangle
             strip_index_format: None,
             front_face: wgpu::FrontFace::Ccw,
             cull_mode: Some(wgpu::Face::Back),
@@ -193,11 +197,14 @@ impl State {
         });
 
         // vertex and index buffers
-        let _num_vertices = VERTICES.len() as u32;
+        // todo cases for cpu and gpu iter
+        let vertices = util::init_vertices();
+
+        let _num_vertices = vertices.len() as u32;
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(VERTICES),
-            usage: wgpu::BufferUsages::VERTEX,
+            contents: bytemuck::cast_slice(&vertices[..]),
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
         });
 
         let num_indices = INDICES.len() as u32;
@@ -208,7 +215,7 @@ impl State {
         });
 
         Self {
-            _args: args,
+            args,
             window,
             surface,
             device,
@@ -217,6 +224,7 @@ impl State {
             size,
             julia_bind_group,
             render_pipeline,
+            vertices,
             vertex_buffer,
             index_buffer,
             _num_vertices,
@@ -237,15 +245,22 @@ impl State {
         false
     }
 
-    fn update(&mut self) {}
+    fn update(&mut self) {
+        // todo if cpu iter
+        self.vertices.iter_mut().for_each(|v| {
+           let it = util::julia_iter([v.position[0], v.position[1]], self.args.constant);
+           v.color[2] = it as f32 / util::MAXIMUM_ITERATIONS as f32;
+        });
+
+        self.queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&self.vertices[..]));
+    }
 
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let command_encoder_descriptor = wgpu::CommandEncoderDescriptor {
+        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Render Encoder")
-        };
-        let mut encoder = self.device.create_command_encoder(&command_encoder_descriptor);
+        });
 
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Render Pass"),
@@ -268,8 +283,10 @@ impl State {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.julia_bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-        render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
+        // todo gpu/cpu iter
+        //render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        //render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
+        render_pass.draw(0..640_000, 0..1); // 800 * 800 = 640_000
 
         drop(render_pass);
 
@@ -290,6 +307,10 @@ struct Args {
     /// Julia parameter
     #[arg(long, value_parser = Self::parse_complex_number, default_value = "0.355-0.355i")]
     constant: [f32; 2],
+
+    /// Perform Julia iteration in the shader
+    #[arg(long, default_value_t = true)]
+    shader_iter: bool,
 }
 
 impl Args {
