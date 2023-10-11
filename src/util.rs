@@ -1,9 +1,10 @@
-use crate::Vertex;
+use crate::state::State;
 
 pub const MAXIMUM_ITERATIONS: u32 = 250;
 const MAXIMUM_DISTANCE_SQUARE: f32 = 4.0;
 
-pub fn julia_iter(z: [f32; 2], c: [f32; 2]) -> u32 {
+pub fn julia_iter(z: [f32; 3], c: [f32; 2]) -> u32 {
+    // todo bigdecimal
     let mut re = z[0];
     let mut im = z[1];
 
@@ -21,14 +22,40 @@ pub fn julia_iter(z: [f32; 2], c: [f32; 2]) -> u32 {
     it
 }
 
-pub fn init_vertices() -> Vec<Vertex> {
-    // todo cpu/gpu vertices
-    let mut vertices = vec![Vertex { position: [0.0; 3], color: [0.0; 3] }; 800 * 800];
-    for x in 0..800 {
-        for y in 0..800 {
-            vertices[x + y * 800].position = [x as f32 / 400.0 - 1.0, y as f32 / 400.0 - 1.0, 0.0];
+pub fn match_event(mut state: &mut State, event: winit::event::Event<()>, control_flow: &mut winit::event_loop::ControlFlow) {
+    match event {
+        winit::event::Event::WindowEvent { ref event, window_id }  if window_id == state.window().id() => if !state.input(event) {
+            match_window_event(&mut state, control_flow, event);
+        }
+        winit::event::Event::RedrawRequested(window_id) if window_id == state.window().id() => {
+            state.update();
+            match state.render() {
+                Ok(_) => {}
+                Err(wgpu::SurfaceError::Lost) => state.resize(state.size()),
+                Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = winit::event_loop::ControlFlow::Exit,
+                Err(e) => eprintln!("{:?}", e),
+            }
+        }
+        winit::event::Event::MainEventsCleared => state.window().request_redraw(),
+        _ => ()
+    }
+}
+
+fn match_window_event(state: &mut State, control_flow: &mut winit::event_loop::ControlFlow, event: &winit::event::WindowEvent) {
+    match event {
+        winit::event::WindowEvent::CloseRequested => *control_flow = winit::event_loop::ControlFlow::Exit,
+        winit::event::WindowEvent::KeyboardInput { input, .. } => match_keyboard_input(control_flow, input),
+        winit::event::WindowEvent::Resized(physical_size) => state.resize(*physical_size),
+        winit::event::WindowEvent::ScaleFactorChanged { new_inner_size, .. } => state.resize(**new_inner_size),
+        _ => ()
+    }
+}
+
+fn match_keyboard_input(control_flow: &mut winit::event_loop::ControlFlow, input: &winit::event::KeyboardInput) {
+    if let Some(key) = input.virtual_keycode {
+        match key {
+            winit::event::VirtualKeyCode::Escape => *control_flow = winit::event_loop::ControlFlow::Exit,
+            _ => ()
         }
     }
-
-    vertices
 }
