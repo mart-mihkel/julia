@@ -21,7 +21,7 @@ pub struct Args {
     constant: [f32; 2],
 
     /// Perform Julia iteration in the shader
-    #[arg(long, value_parser = Self::parse_bool, default_value_t = "no")]
+    #[arg(long, value_parser = Self::parse_bool, default_value = "no")]
     use_gpu: bool,
 }
 
