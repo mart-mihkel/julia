@@ -1,7 +1,7 @@
 use wgpu::SurfaceError;
-use winit::event::{Event, KeyboardInput, VirtualKeyCode, WindowEvent};
-use winit::event::Event::RedrawRequested;
+use winit::event::Event;
 use winit::event_loop::ControlFlow;
+
 use crate::state::State;
 
 pub const MAXIMUM_ITERATIONS: u32 = 250;
@@ -28,10 +28,10 @@ pub fn julia_iter(z: [f32; 3], c: [f32; 2]) -> u32 {
 
 pub fn handle_event(mut state: &mut State, event: Event<()>, control_flow: &mut ControlFlow) {
     match event {
-        WindowEvent { ref event, window_id }  if window_id == state.window().id() => if !state.input(event) {
+        Event::WindowEvent { ref event, window_id }  if window_id == state.window().id() => if !state.input(event) {
             handle_window_event(&mut state, control_flow, event);
         }
-        RedrawRequested(window_id) if window_id == state.window().id() => {
+        Event::RedrawRequested(window_id) if window_id == state.window().id() => {
             state.update();
             match state.render() {
                 Ok(_) => {}
@@ -40,7 +40,7 @@ pub fn handle_event(mut state: &mut State, event: Event<()>, control_flow: &mut 
                 Err(e) => eprintln!("{:?}", e),
             }
         }
-        MainEventsCleared => state.window().request_redraw(),
+        Event::MainEventsCleared => state.window().request_redraw(),
         _ => ()
     }
 }
