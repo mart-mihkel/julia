@@ -1,5 +1,5 @@
 use wgpu::SurfaceError;
-use winit::event::Event;
+use winit::event::{Event, KeyboardInput, VirtualKeyCode, WindowEvent};
 use winit::event_loop::ControlFlow;
 
 use crate::state::State;
