@@ -56,13 +56,12 @@ fn iter(position: vec4<f32>) -> i32 {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    // let it = iter(in.clip_position);
+    let it = iter(in.clip_position);
 
-    // var b: f32 = f32(it) / 250.0;
-    // if (it == 250) {
-    //     b = 0.0;
-    // }
+    var b: f32 = f32(it) / 250.0;
+    if (it == 250) {
+        b = 0.0;
+    }
 
-    // return vec4<f32>(0.0, 0.0, b, 1.0);
-    return vec4<f32>(in.color, 1.0);
+    return vec4<f32>(0.0, 0.0, b, 1.0);
 }

@@ -1,5 +1,5 @@
 use wgpu::util::DeviceExt;
-use crate::util::Vertex;
+use crate::vertex::Vertex;
 use crate::{Args, util};
 
 #[repr(C)]
@@ -67,7 +67,13 @@ impl State {
         };
         surface.configure(&device, &config);
 
-        let shader = device.create_shader_module(wgpu::include_wgsl!("shader.wgsl"));
+        // shader
+        let shader_module_descriptor = if args.use_gpu {
+            wgpu::include_wgsl!("julia_shader.wgsl")
+        } else {
+            wgpu::include_wgsl!("default_shader.wgsl")
+        };
+        let shader = device.create_shader_module(shader_module_descriptor);
 
         // uniforms
         let julia_uniforms = JuliaUniforms { c: args.constant };
