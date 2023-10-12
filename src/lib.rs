@@ -3,6 +3,11 @@ mod state;
 mod vertex;
 
 use clap::Parser;
+use winit::dpi::PhysicalSize;
+use winit::event_loop::EventLoop;
+use winit::window::WindowBuilder;
+
+use crate::state::State;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -34,15 +39,15 @@ impl Args {
 }
 
 pub async fn run() {
-    let event_loop = winit::event_loop::EventLoop::new();
-    let window = winit::window::WindowBuilder::new()
+    let event_loop = EventLoop::new();
+    let window = WindowBuilder::new()
         .with_title("Julia")
-        .with_inner_size(winit::dpi::PhysicalSize::new(800, 800))
+        .with_inner_size(PhysicalSize::new(800, 800))
         .build(&event_loop)
         .unwrap();
 
     let args = Args::parse();
-    let mut state = state::State::new(args, window).await;
+    let mut state = State::new(args, window).await;
 
-    event_loop.run(move |event, _, control_flow| util::match_event(&mut state, event, control_flow));
+    event_loop.run(move |event, _, control_flow| util::handle_event(&mut state, event, control_flow));
 }
