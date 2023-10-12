@@ -70,16 +70,12 @@ impl Vertex {
     pub fn translate_position(&self, offset_x: f32, offset_y: f32, zoom: f32) -> [f32; 2] {
         [
             self.position[0] * zoom + offset_x,
-            self.position[0] * zoom + offset_y,
+            self.position[1] * zoom + offset_y,
         ]
     }
 
     pub fn set_color(&mut self, color: [f32; 3]) {
         self.color = color;
-    }
-
-    pub fn position(&self) -> [f32; 2] {
-        self.position
     }
 }
 
