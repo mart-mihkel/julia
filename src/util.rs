@@ -7,7 +7,7 @@ use crate::state::State;
 pub const MAXIMUM_ITERATIONS: u32 = 250;
 const MAXIMUM_DISTANCE_SQUARE: f32 = 4.0;
 
-pub fn julia_iter(z: [f32; 3], c: [f32; 2]) -> u32 {
+pub fn julia_iter(z: [f32; 2], c: [f32; 2]) -> u32 {
     // todo bigdecimal
     let mut re = z[0];
     let mut im = z[1];

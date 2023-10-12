@@ -212,10 +212,14 @@ impl State {
     pub fn update(&mut self) {
         if self.args.use_gpu { return; }
 
-        self.vertices.iter_mut().for_each(|v| {
-            let it = util::julia_iter(v.position(), self.args.constant) as f32;
-            let b = it / util::MAXIMUM_ITERATIONS as f32;
-            v.set_color([0f32, 0f32, b]);
+        let num_iterations: Vec<f32> = self.vertices.iter()
+            .map(|v| v.translate_position(0.5, 0.5, 0.025))
+            .map(|z| util::julia_iter(z, self.args.constant) as f32)
+            .collect();
+
+        num_iterations.into_iter().enumerate().for_each(|(i, iterations)| {
+            let b = iterations / util::MAXIMUM_ITERATIONS as f32;
+            self.vertices[i].set_color([0f32, 0f32, b]);
         });
 
         self.queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&self.vertices[..]));
