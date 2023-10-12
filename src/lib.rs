@@ -21,13 +21,13 @@ pub struct Args {
     constant: [f32; 2],
 
     /// Perform Julia iteration in the shader
-    #[arg(long, default_value_t = false)]
+    #[arg(long, value_parser = Self::parse_bool, default_value_t = "no")]
     use_gpu: bool,
 }
 
 impl Args {
     fn parse_complex_number(s: &str) -> Result<[f32; 2], &'static str> {
-        const MESSAGE: &str = "uh oh!";
+        const MESSAGE: &str = "constant must be a complex number in cartesian notation";
         let loc = s.rfind("+").or_else(|| s.rfind("-")).ok_or(MESSAGE)?;
         let err = |_| MESSAGE;
 
@@ -35,6 +35,15 @@ impl Args {
             s[..loc].parse::<f32>().map_err(err)?,
             s[loc..s.len() - 1].parse::<f32>().map_err(err)?
         ])
+    }
+
+    fn parse_bool(s: &str) -> Result<bool, &'static str> {
+        const MESSAGE: &str = "yes/no";
+        match s {
+            "yes" => Ok(true),
+            "no" => Ok(false),
+            _ => Err(MESSAGE),
+        }
     }
 }
 
