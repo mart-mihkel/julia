@@ -4,17 +4,14 @@ use winit::event_loop::ControlFlow;
 
 use crate::state::State;
 
-pub const MAXIMUM_ITERATIONS: u32 = 250;
-const MAXIMUM_DISTANCE_SQUARE: f32 = 4.0;
-
-pub fn julia_iter(z: [f32; 2], c: [f32; 2]) -> u32 {
+pub fn julia_iter(z: [f32; 2], c: [f32; 2], max_it: u32) -> u32 {
     // todo bigdecimal
     let mut re = z[0];
     let mut im = z[1];
 
     let mut dist_square = re.powi(2) + im.powi(2);
     let mut it = 0;
-    while it < MAXIMUM_ITERATIONS && dist_square < MAXIMUM_DISTANCE_SQUARE {
+    while it < max_it && dist_square < 4.0 {
         let temp = re;
         re = temp.powi(2) - im.powi(2) + c[0];
         im = 2.0 * im * temp + c[1];

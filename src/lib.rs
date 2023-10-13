@@ -23,6 +23,10 @@ pub struct Args {
     /// Perform Julia iteration in the shader
     #[arg(long, value_parser = Self::parse_bool, default_value = "no")]
     use_gpu: bool,
+
+    /// Maximum number of iterations per vertex when not using the shader
+    #[arg(long, default_value_t = 250)]
+    maximum_iterations: u32,
 }
 
 impl Args {
