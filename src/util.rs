@@ -25,7 +25,7 @@ pub fn julia_iter(z: [f32; 2], c: [f32; 2], max_it: u32) -> u32 {
 
 pub fn handle_event(mut state: &mut State, event: Event<()>, control_flow: &mut ControlFlow) {
     match event {
-        Event::WindowEvent { ref event, window_id }  if window_id == state.window().id() => if !state.input(event) {
+        Event::WindowEvent { ref event, window_id }  if window_id == state.window().id() => {
             handle_window_event(&mut state, control_flow, event);
         }
         Event::RedrawRequested(window_id) if window_id == state.window().id() => {

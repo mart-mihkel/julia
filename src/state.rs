@@ -1,7 +1,6 @@
 use wgpu::{Backends, BindGroup, BindGroupDescriptor, BindGroupLayoutDescriptor, BindingType, BlendState, Buffer, BufferBindingType, BufferUsages, Color, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Features, FragmentState, FrontFace, IndexFormat, Instance, InstanceDescriptor, LoadOp, MultisampleState, Operations, PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, ShaderStages, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, VertexState};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use winit::dpi::PhysicalSize;
-use winit::event::WindowEvent;
 use winit::window::Window;
 
 use crate::vertex::Vertex;
@@ -209,12 +208,15 @@ impl State {
         if self.args.use_gpu { return; }
 
         let iterations: Vec<f32> = self.vertices.iter()
-            .map(|v| v.translate_position(0.5, 0.5, 0.025))
+            .map(|v| v.translate_position(0.5, 0.5, 1.0))
             .map(|z| util::julia_iter(z, self.args.constant, self.args.maximum_iterations) as f32)
             .collect();
 
+        let min = iterations.iter().copied().reduce(f32::min).unwrap();
+        let max = iterations.iter().copied().reduce(f32::max).unwrap();
+
         iterations.into_iter().enumerate().for_each(|(i, it)| {
-            let b = it / self.args.maximum_iterations as f32;
+            let b = (it - min) / (max - min);
             self.vertices[i].set_color([0f32, 0f32, b]);
         });
 
