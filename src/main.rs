@@ -1,6 +1,4 @@
-use julia::run;
-
 fn main() {
     env_logger::init();
-    pollster::block_on(run());
+    pollster::block_on(julia::run());
 }

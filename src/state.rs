@@ -1,16 +1,14 @@
 use wgpu::{Backends, BindGroup, BindGroupDescriptor, BindGroupLayoutDescriptor, BindingType, BlendState, Buffer, BufferBindingType, BufferUsages, Color, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Features, FragmentState, FrontFace, IndexFormat, Instance, InstanceDescriptor, LoadOp, MultisampleState, Operations, PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, ShaderStages, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, VertexState};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use winit::dpi::PhysicalSize;
-use winit::event::WindowEvent;
 use winit::window::Window;
-
 use crate::vertex::Vertex;
-use crate::{Args, util};
+use crate::{Args, util, ComplexNumber, palette};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct JuliaUniforms {
-    c: [f32; 2],
+    c: ComplexNumber,
 }
 
 pub struct State {
@@ -26,7 +24,7 @@ pub struct State {
     vertices: Vec<Vertex>,
     vertex_buffer: Buffer,
     index_buffer: Buffer,
-    _num_vertices: u32,
+    num_vertices: u32,
     num_indices: u32,
 }
 
@@ -163,7 +161,7 @@ impl State {
 
         // vertex and index buffers
         let vertices = Vertex::init_vertices(args.use_gpu);
-        let _num_vertices = vertices.len() as u32;
+        let num_vertices = vertices.len() as u32;
         let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Vertex Buffer"),
             contents: bytemuck::cast_slice(&vertices[..]),
@@ -191,7 +189,7 @@ impl State {
             vertices,
             vertex_buffer,
             index_buffer,
-            _num_vertices,
+            num_vertices,
             num_indices,
         }
     }
@@ -205,17 +203,30 @@ impl State {
         }
     }
 
-    pub fn input(&mut self, _event: &WindowEvent) -> bool {
-        false
-    }
-
     pub fn update(&mut self) {
         if self.args.use_gpu { return; }
 
-        self.vertices.iter_mut().for_each(|v| {
-            let it = util::julia_iter(v.position(), self.args.constant) as f32;
-            let b = it / util::MAXIMUM_ITERATIONS as f32;
-            v.set_color([0f32, 0f32, b]);
+        // todo move somewhere
+        // todo histogram
+        // todo translate based on command line arguments
+        
+        let iter_results: Vec<(u32, f32)> = self.vertices.iter()
+            .map(|v| v.translate_position(0.0, 0.0, 1.0))
+            .map(|z| util::julia_iter(z, self.args.constant, self.args.maximum_iterations))
+            .collect();
+
+        iter_results.into_iter().enumerate().for_each(|(i, (it, exp_smoothing))| {
+            let c = if it == self.args.maximum_iterations {
+                [0.0; 3]
+            } else {
+                palette::linear_interpolate(
+                    palette::pick(self.args.palette, exp_smoothing.floor() as usize),
+                    palette::pick(self.args.palette, exp_smoothing.floor() as usize + 1),
+                    exp_smoothing % 1.0,
+                )
+            };
+
+            self.vertices[i].set_color(c);
         });
 
         self.queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&self.vertices[..]));
@@ -254,7 +265,7 @@ impl State {
             render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
             render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
         } else {
-            render_pass.draw(0..640_000, 0..1);
+            render_pass.draw(0..self.num_vertices, 0..1);
         }
 
         drop(render_pass);
