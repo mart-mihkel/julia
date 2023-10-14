@@ -8,7 +8,7 @@ use crate::{Args, util, ComplexNumber, palette};
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct JuliaUniforms {
-    c: ComplexNumber
+    c: ComplexNumber,
 }
 
 pub struct State {
@@ -207,16 +207,24 @@ impl State {
         if self.args.use_gpu { return; }
 
         // todo move somewhere
-
-        let iter_results: Vec<f32> = self.vertices.iter()
-            .map(|v| v.translate_position(0.0, 0.0, 0.05)) // todo translate based on command line arguments
+        // todo histogram
+        // todo translate based on command line arguments
+        
+        let iter_results: Vec<(u32, f32)> = self.vertices.iter()
+            .map(|v| v.translate_position(0.0, 0.0, 1.0))
             .map(|z| util::julia_iter(z, self.args.constant, self.args.maximum_iterations))
             .collect();
 
-        iter_results.into_iter().enumerate().for_each(|(i, exp_smoothing)| {
-            let c1 = palette::pick(exp_smoothing.floor() as usize);
-            let c2 = palette::pick(exp_smoothing.floor() as usize + 1);
-            let c = palette::linear_interpolate(c1, c2, exp_smoothing % 1.0);
+        iter_results.into_iter().enumerate().for_each(|(i, (it, exp_smoothing))| {
+            let c = if it == self.args.maximum_iterations {
+                [0.0; 3]
+            } else {
+                palette::linear_interpolate(
+                    palette::pick(self.args.palette, exp_smoothing.floor() as usize),
+                    palette::pick(self.args.palette, exp_smoothing.floor() as usize + 1),
+                    exp_smoothing % 1.0,
+                )
+            };
 
             self.vertices[i].set_color(c);
         });
