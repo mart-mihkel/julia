@@ -10,6 +10,7 @@ use winit::window::WindowBuilder;
 use crate::state::State;
 
 type ComplexNumber = [f32; 2];
+type Rgb = [f32; 3];
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]

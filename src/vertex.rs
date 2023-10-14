@@ -1,15 +1,15 @@
 use wgpu::{VertexAttribute, VertexBufferLayout, VertexFormat};
-use crate::ComplexNumber;
+use crate::{ComplexNumber, Rgb};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {
     position: [f32; 2],
-    color: [f32; 3],
+    color: Rgb,
 }
 
 impl Vertex {
-    pub fn new(position: [f32; 2], color: [f32; 3]) -> Self {
+    pub fn new(position: [f32; 2], color: Rgb) -> Self {
         Self { position, color }
     }
 
@@ -77,7 +77,7 @@ impl Vertex {
         ]
     }
 
-    pub fn set_color(&mut self, color: [f32; 3]) {
+    pub fn set_color(&mut self, color: Rgb) {
         self.color = color;
     }
 }
