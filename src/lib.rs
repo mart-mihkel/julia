@@ -7,6 +7,7 @@ use clap::Parser;
 use winit::dpi::PhysicalSize;
 use winit::event_loop::EventLoop;
 use winit::window::WindowBuilder;
+use crate::palette::Palette;
 use crate::state::State;
 
 type ComplexNumber = [f32; 2];
@@ -15,10 +16,6 @@ type Rgb = [f32; 3];
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
-    /// Frames per second limit
-    #[arg(long, default_value_t = 60f32)]
-    fps: f32,
-
     /// Julia parameter
     #[arg(long, value_parser = Self::parse_complex_number, default_value = "-0.162+1.04i")]
     constant: ComplexNumber,
@@ -30,6 +27,10 @@ pub struct Args {
     /// Maximum number of iterations per vertex when not using the shader
     #[arg(long, default_value_t = 250)]
     maximum_iterations: u32,
+
+    /// Color palette
+    #[arg(long, value_parser = Self::parse_palette, default_value = "ultra-fractal")]
+    palette: Palette,
 
     // todo resolution as command line argument
 }
@@ -51,6 +52,15 @@ impl Args {
         match s {
             "yes" => Ok(true),
             "no" => Ok(false),
+            _ => Err(MESSAGE),
+        }
+    }
+
+    fn parse_palette(s: &str) -> Result<Palette, &'static str> {
+        const MESSAGE: &str = "must be one of: ultra-fractal, green.";
+        match s {
+            "ultra-fractal" => Ok(Palette::UltraFractal),
+            "green" => Ok(Palette::Green),
             _ => Err(MESSAGE),
         }
     }
