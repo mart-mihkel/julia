@@ -1,4 +1,5 @@
 use wgpu::{VertexAttribute, VertexBufferLayout, VertexFormat};
+use crate::ComplexNumber;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -54,6 +55,7 @@ impl Vertex {
     }
 
     fn init_point_list_vertices() -> Vec<Vertex> {
+        // todo resolution as command line argument
         let mut vertices = vec![Vertex::default(); 800 * 800];
         for x in 0..800 {
             for y in 0..800 {
@@ -67,7 +69,8 @@ impl Vertex {
         vertices
     }
 
-    pub fn translate_position(&self, offset_x: f32, offset_y: f32, zoom: f32) -> [f32; 2] {
+    pub fn translate_position(&self, offset_x: f32, offset_y: f32, zoom: f32) -> ComplexNumber {
+        // todo bigdecimal
         [
             self.position[0] * zoom + offset_x,
             self.position[1] * zoom + offset_y,
