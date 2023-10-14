@@ -26,7 +26,7 @@ struct JuliaUniforms {
 @binding(0)
 var<uniform> julia_uniforms: JuliaUniforms;
 
-fn iter(position: vec4<f32>) -> i32 {
+fn iter(position: vec4<f32>, max_it: i32) -> f32 {
     var re: f32 = (position.x / 200.0) - 2.0;
     var im: f32 = (position.y / 200.0) - 2.0;
 
@@ -37,7 +37,7 @@ fn iter(position: vec4<f32>) -> i32 {
     var it: i32 = 0;
 
     loop {
-        if (it == 250 || dist2 >= 4.0) {
+        if (it == max_it || dist2 >= 4.0) {
             break;
         }
 
@@ -51,17 +51,11 @@ fn iter(position: vec4<f32>) -> i32 {
         }
     }
 
-    return it;
+    return f32(it) / f32(max_it);
 }
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    let it = iter(in.clip_position);
-
-    var b: f32 = f32(it) / 250.0;
-    if (it == 250) {
-        b = 0.0;
-    }
-
-    return vec4<f32>(0.0, 0.0, b, 1.0);
+    let it = iter(in.clip_position, 250);
+    return vec4<f32>(0.0, 0.0, it, 1.0);
 }
