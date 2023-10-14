@@ -4,12 +4,12 @@ use crate::{ComplexNumber, Rgb};
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {
-    position: [f32; 2],
+    position: ComplexNumber,
     color: Rgb,
 }
 
 impl Vertex {
-    pub fn new(position: [f32; 2], color: Rgb) -> Self {
+    pub fn new(position: ComplexNumber, color: Rgb) -> Self {
         Self { position, color }
     }
 
@@ -24,7 +24,7 @@ impl Vertex {
                     format: VertexFormat::Float32x2,
                 },
                 VertexAttribute {
-                    offset: std::mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
+                    offset: std::mem::size_of::<ComplexNumber>() as wgpu::BufferAddress,
                     shader_location: 1,
                     format: VertexFormat::Float32x3,
                 }
