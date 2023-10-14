@@ -19,7 +19,7 @@ pub struct Args {
     fps: f32,
 
     /// Julia parameter
-    #[arg(long, value_parser = Self::parse_complex_number, default_value = "0.355-0.355i")]
+    #[arg(long, value_parser = Self::parse_complex_number, default_value = "-0.162+1.04i")]
     constant: ComplexNumber,
 
     /// Perform Julia iteration in the shader, a tradeoff between speed and precision

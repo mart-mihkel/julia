@@ -2,14 +2,13 @@ use wgpu::{Backends, BindGroup, BindGroupDescriptor, BindGroupLayoutDescriptor, 
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use winit::dpi::PhysicalSize;
 use winit::window::Window;
-
 use crate::vertex::Vertex;
-use crate::{Args, util};
+use crate::{Args, util, ComplexNumber, palette};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct JuliaUniforms {
-    c: [f32; 2],
+    c: ComplexNumber
 }
 
 pub struct State {
@@ -25,7 +24,7 @@ pub struct State {
     vertices: Vec<Vertex>,
     vertex_buffer: Buffer,
     index_buffer: Buffer,
-    _num_vertices: u32,
+    num_vertices: u32,
     num_indices: u32,
 }
 
@@ -162,7 +161,7 @@ impl State {
 
         // vertex and index buffers
         let vertices = Vertex::init_vertices(args.use_gpu);
-        let _num_vertices = vertices.len() as u32;
+        let num_vertices = vertices.len() as u32;
         let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Vertex Buffer"),
             contents: bytemuck::cast_slice(&vertices[..]),
@@ -190,7 +189,7 @@ impl State {
             vertices,
             vertex_buffer,
             index_buffer,
-            _num_vertices,
+            num_vertices,
             num_indices,
         }
     }
@@ -207,17 +206,19 @@ impl State {
     pub fn update(&mut self) {
         if self.args.use_gpu { return; }
 
-        let iterations: Vec<f32> = self.vertices.iter()
-            .map(|v| v.translate_position(0.5, 0.5, 1.0))
-            .map(|z| util::julia_iter(z, self.args.constant, self.args.maximum_iterations) as f32)
+        // todo move somewhere
+
+        let iter_results: Vec<f32> = self.vertices.iter()
+            .map(|v| v.translate_position(0.0, 0.0, 0.05)) // todo translate based on command line arguments
+            .map(|z| util::julia_iter(z, self.args.constant, self.args.maximum_iterations))
             .collect();
 
-        let min = iterations.iter().copied().reduce(f32::min).unwrap();
-        let max = iterations.iter().copied().reduce(f32::max).unwrap();
+        iter_results.into_iter().enumerate().for_each(|(i, exp_smoothing)| {
+            let c1 = palette::pick(exp_smoothing.floor() as usize);
+            let c2 = palette::pick(exp_smoothing.floor() as usize + 1);
+            let c = palette::linear_interpolate(c1, c2, exp_smoothing % 1.0);
 
-        iterations.into_iter().enumerate().for_each(|(i, it)| {
-            let b = (it - min) / (max - min);
-            self.vertices[i].set_color([0f32, 0f32, b]);
+            self.vertices[i].set_color(c);
         });
 
         self.queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&self.vertices[..]));
@@ -256,7 +257,7 @@ impl State {
             render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
             render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
         } else {
-            render_pass.draw(0..640_000, 0..1);
+            render_pass.draw(0..self.num_vertices, 0..1);
         }
 
         drop(render_pass);
