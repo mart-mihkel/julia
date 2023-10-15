@@ -164,11 +164,11 @@ impl State {
         });
 
         // vertex and index buffers
-        let vertices = Vertex::init_vertices(args.use_gpu);
+        let vertices = Vertex::init_vertices(args.use_gpu, window.inner_size());
         let num_vertices = vertices.len() as u32;
         let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(&vertices[..]),
+            contents: bytemuck::cast_slice(vertices.as_slice()),
             usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
         });
 
@@ -217,8 +217,6 @@ impl State {
         if self.args.use_gpu { return; }
 
         // todo move somewhere
-        // todo histogram
-        // todo translate based on command line arguments
 
         let iter_results: Vec<(u32, f32)> = self.vertices.iter()
             .map(|v| v.translate_position(self.offset, self.zoom))
@@ -227,7 +225,7 @@ impl State {
 
         iter_results.into_iter().enumerate().for_each(|(i, (it, exp_smoothing))| {
             let c = if it == self.args.maximum_iterations {
-                [0.0; 3]
+                [0f32; 3]
             } else {
                 palette::linear_interpolate(
                     palette::pick(self.args.palette, exp_smoothing.floor() as usize),
@@ -311,10 +309,11 @@ impl State {
     }
 
     pub fn offset_to_mouse(&mut self) {
-        // todo resolution from args
+        let half_width = self.window.inner_size().width as f32 / 2.0;
+        let half_height = self.window.inner_size().height as f32 / 2.0;
         self.offset = [
-            self.offset[0] + (self.mouse_position.x as f32 / 400.0 - 1.0) * self.zoom,
-            self.offset[1] + (self.mouse_position.y as f32 / -400.0 + 1.0) * self.zoom,
+            self.offset[0] + (self.mouse_position.x as f32 / half_width - 1.0) * self.zoom,
+            self.offset[1] + (self.mouse_position.y as f32 / -half_height + 1.0) * self.zoom,
         ];
     }
 }

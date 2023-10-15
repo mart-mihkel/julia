@@ -30,7 +30,7 @@ pub struct Args {
 
     /// Window size
     #[arg(long, value_parser = Self::parse_resolution, default_value = "800:800")]
-    window_size: PhysicalSize<f32>,
+    resolution: PhysicalSize<f32>,
 
     /// Perform Julia iteration in the shader, a tradeoff between speed and precision
     #[arg(long, value_parser = Self::parse_bool, default_value = "no")]
@@ -74,7 +74,7 @@ impl Args {
 
         Ok(PhysicalSize::new(
             s[..loc].parse::<f32>().map_err(err)?,
-            s[loc + 1..].parse::<f32>().map_err(err)?
+            s[loc + 1..].parse::<f32>().map_err(err)?,
         ))
     }
 }
@@ -84,7 +84,8 @@ pub async fn run() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_title("Julia")
-        .with_inner_size(args.window_size)
+        .with_decorations(false)
+        .with_inner_size(args.resolution)
         .build(&event_loop)
         .unwrap();
 

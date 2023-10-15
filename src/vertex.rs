@@ -1,4 +1,5 @@
 use wgpu::{VertexAttribute, VertexBufferLayout, VertexFormat};
+use winit::dpi::PhysicalSize;
 use crate::{ComplexNumber, Rgb};
 
 #[repr(C)]
@@ -11,6 +12,10 @@ pub struct Vertex {
 impl Vertex {
     pub fn new(position: ComplexNumber, color: Rgb) -> Self {
         Self { position, color }
+    }
+
+    pub fn with_position(position: ComplexNumber) -> Self {
+        Self { position, color: [0f32; 3] }
     }
 
     pub fn desc() -> VertexBufferLayout<'static> {
@@ -33,47 +38,48 @@ impl Vertex {
     }
 
     pub fn init_indices() -> Vec<u16> {
-        // todo slice/array
         vec![0, 1, 2, 0, 3, 1]
     }
 
-    pub fn init_vertices(use_gpu: bool) -> Vec<Vertex> {
-        // todo slice/array
+    pub fn init_vertices(use_gpu: bool, inner_size: PhysicalSize<u32>) -> Vec<Vertex> {
         match use_gpu {
             true => Self::init_triangle_list_vertices(),
-            false => Self::init_point_list_vertices(),
+            false => Self::init_point_list_vertices(inner_size),
         }
     }
 
     fn init_triangle_list_vertices() -> Vec<Vertex> {
         vec![
-            Vertex::new([-1.0, -1.0], [0.0, 0.0, 0.0]),
-            Vertex::new([1.0, 1.0], [0.0, 0.0, 0.0]),
-            Vertex::new([-1.0, 1.0], [0.0, 0.0, 0.0]),
-            Vertex::new([1.0, -1.0], [0.0, 0.0, 0.0]),
+            Vertex::new([-1.0, -1.0], [0f32; 3]),
+            Vertex::new([1.0, 1.0], [0f32; 3]),
+            Vertex::new([-1.0, 1.0], [0f32; 3]),
+            Vertex::new([1.0, -1.0], [0f32; 3]),
         ]
     }
 
-    fn init_point_list_vertices() -> Vec<Vertex> {
-        // todo resolution as command line argument
-        let mut vertices = vec![Vertex::default(); 800 * 800];
-        for x in 0..800 {
-            for y in 0..800 {
-                // [0, 800] -> [0, 2] -> [-1, 1]
-                let pos_x = x as f32 / 400.0 - 1.0;
-                let pos_y = y as f32 / 400.0 - 1.0;
-                vertices[x + y * 800].position = [pos_x, pos_y];
+    fn init_point_list_vertices(inner_size: PhysicalSize<u32>) -> Vec<Vertex> {
+        let half_width = inner_size.width as f32 / 2.0;
+        let half_height = inner_size.height as f32 / 2.0;
+
+        let capacity = inner_size.height * inner_size.width;
+        let mut vertices = Vec::with_capacity(capacity as usize);
+
+        for x in 0..inner_size.width {
+            for y in 0..inner_size.height {
+                let pos_re = x as f32 / half_width - 1.0;
+                let pos_im = y as f32 / -half_height + 1.0;
+                vertices.push(Vertex::with_position([pos_re, pos_im]))
             }
         }
 
         vertices
     }
 
-    pub fn translate_position(&self, offset_x: f32, offset_y: f32, zoom: f32) -> ComplexNumber {
+    pub fn translate_position(&self, offset: ComplexNumber, zoom: f32) -> ComplexNumber {
         // todo bigdecimal
         [
-            self.position[0] * zoom + offset_x,
-            self.position[1] * zoom + offset_y,
+            self.position[0] * zoom + offset[0],
+            self.position[1] * zoom + offset[1],
         ]
     }
 
