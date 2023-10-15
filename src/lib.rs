@@ -17,12 +17,8 @@ type Rgb = [f32; 3];
 #[command(author, version, about, long_about = None)]
 pub struct Args {
     /// Julia parameter
-    #[arg(long, value_parser = Self::parse_complex_number, default_value = "-0.162+1.04i")]
+    #[arg(long, value_parser = Self::parse_complex_number, default_value = "0.4+0.1i")]
     constant: ComplexNumber,
-
-    /// Perform Julia iteration in the shader, a tradeoff between speed and precision
-    #[arg(long, value_parser = Self::parse_bool, default_value = "no")]
-    use_gpu: bool,
 
     /// Maximum number of iterations per vertex when not using the shader
     #[arg(long, default_value_t = 250)]
@@ -32,7 +28,13 @@ pub struct Args {
     #[arg(long, value_parser = Self::parse_palette, default_value = "ultra-fractal")]
     palette: Palette,
 
-    // todo resolution as command line argument
+    /// Window size
+    #[arg(long, value_parser = Self::parse_resolution, default_value = "800:800")]
+    window_size: PhysicalSize<f32>,
+
+    /// Perform Julia iteration in the shader, a tradeoff between speed and precision
+    #[arg(long, value_parser = Self::parse_bool, default_value = "no")]
+    use_gpu: bool,
 }
 
 impl Args {
@@ -64,17 +66,28 @@ impl Args {
             _ => Err(MESSAGE),
         }
     }
+
+    fn parse_resolution(s: &str) -> Result<PhysicalSize<f32>, &'static str> {
+        const MESSAGE: &str = "width and height";
+        let loc = s.find(":").ok_or(MESSAGE)?;
+        let err = |_| MESSAGE;
+
+        Ok(PhysicalSize::new(
+            s[..loc].parse::<f32>().map_err(err)?,
+            s[loc + 1..].parse::<f32>().map_err(err)?
+        ))
+    }
 }
 
 pub async fn run() {
+    let args = Args::parse();
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_title("Julia")
-        .with_inner_size(PhysicalSize::new(800, 800)) // todo resolution as command line argument
+        .with_inner_size(args.window_size)
         .build(&event_loop)
         .unwrap();
 
-    let args = Args::parse();
     let mut state = State::new(args, window).await;
 
     event_loop.run(move |event, _, control_flow| util::handle_event(&mut state, event, control_flow));

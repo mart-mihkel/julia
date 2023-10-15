@@ -1,6 +1,6 @@
 use wgpu::{Backends, BindGroup, BindGroupDescriptor, BindGroupLayoutDescriptor, BindingType, BlendState, Buffer, BufferBindingType, BufferUsages, Color, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Features, FragmentState, FrontFace, IndexFormat, Instance, InstanceDescriptor, LoadOp, MultisampleState, Operations, PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, ShaderStages, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, VertexState};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
-use winit::dpi::PhysicalSize;
+use winit::dpi::{PhysicalPosition, PhysicalSize};
 use winit::window::Window;
 use crate::vertex::Vertex;
 use crate::{Args, util, ComplexNumber, palette};
@@ -17,6 +17,7 @@ pub struct State {
     device: Device,
     queue: Queue,
     config: SurfaceConfiguration,
+    mouse_position: PhysicalPosition<f64>,
     size: PhysicalSize<u32>,
     window: Window,
     julia_bind_group: BindGroup,
@@ -26,6 +27,8 @@ pub struct State {
     index_buffer: Buffer,
     num_vertices: u32,
     num_indices: u32,
+    offset: ComplexNumber,
+    zoom: f32,
 }
 
 impl State {
@@ -53,6 +56,7 @@ impl State {
         }, None).await.unwrap();
 
         // surface
+        let mouse_position = PhysicalPosition::new(0f64, 0f64);
         let size = window.inner_size();
         let surface_capabilities = surface.get_capabilities(&adapter);
         let surface_format = surface_capabilities.formats.iter()
@@ -176,14 +180,18 @@ impl State {
             usage: BufferUsages::INDEX,
         });
 
+        let offset = [0.0, 0.0];
+        let zoom = 1.0;
+
         Self {
             args,
-            window,
             surface,
             device,
             queue,
             config,
+            mouse_position,
             size,
+            window,
             julia_bind_group,
             render_pipeline,
             vertices,
@@ -191,6 +199,8 @@ impl State {
             index_buffer,
             num_vertices,
             num_indices,
+            offset,
+            zoom,
         }
     }
 
@@ -209,9 +219,9 @@ impl State {
         // todo move somewhere
         // todo histogram
         // todo translate based on command line arguments
-        
+
         let iter_results: Vec<(u32, f32)> = self.vertices.iter()
-            .map(|v| v.translate_position(0.0, 0.0, 1.0))
+            .map(|v| v.translate_position(self.offset, self.zoom))
             .map(|z| util::julia_iter(z, self.args.constant, self.args.maximum_iterations))
             .collect();
 
@@ -282,5 +292,29 @@ impl State {
 
     pub fn size(&self) -> PhysicalSize<u32> {
         self.size
+    }
+
+    pub fn use_gpu(&self) -> bool {
+        self.args.use_gpu
+    }
+
+    pub fn zoom_in(&mut self) {
+        self.zoom *= 0.75;
+    }
+
+    pub fn zoom_out(&mut self) {
+        self.zoom *= 1.25;
+    }
+
+    pub fn set_mouse_position(&mut self, position: PhysicalPosition<f64>) {
+        self.mouse_position = position;
+    }
+
+    pub fn offset_to_mouse(&mut self) {
+        // todo resolution from args
+        self.offset = [
+            self.offset[0] + (self.mouse_position.x as f32 / 400.0 - 1.0) * self.zoom,
+            self.offset[1] + (self.mouse_position.y as f32 / -400.0 + 1.0) * self.zoom,
+        ];
     }
 }
