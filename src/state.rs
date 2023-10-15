@@ -216,8 +216,6 @@ impl State {
     pub fn update(&mut self) {
         if self.args.use_gpu { return; }
 
-        // todo move somewhere
-
         let iter_results: Vec<(u32, f32)> = self.vertices.iter()
             .map(|v| v.translate_position(self.offset, self.zoom))
             .map(|z| util::julia_iter(z, self.args.constant, self.args.maximum_iterations))
