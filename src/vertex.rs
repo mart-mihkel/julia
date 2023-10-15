@@ -64,8 +64,8 @@ impl Vertex {
         let capacity = inner_size.height * inner_size.width;
         let mut vertices = Vec::with_capacity(capacity as usize);
 
-        for x in 0..inner_size.width {
-            for y in 0..inner_size.height {
+        for x in 1..=inner_size.width {
+            for y in 1..=inner_size.height {
                 let pos_re = x as f32 / half_width - 1.0;
                 let pos_im = y as f32 / -half_height + 1.0;
                 vertices.push(Vertex::with_position([pos_re, pos_im]))
