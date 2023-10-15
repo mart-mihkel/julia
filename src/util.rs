@@ -1,6 +1,6 @@
 use std::ops::Neg;
 use wgpu::SurfaceError;
-use winit::event::{Event, KeyboardInput, VirtualKeyCode, WindowEvent};
+use winit::event::{ElementState, Event, KeyboardInput, MouseButton, VirtualKeyCode, WindowEvent};
 use winit::event_loop::ControlFlow;
 use crate::ComplexNumber;
 use crate::state::State;
@@ -41,8 +41,8 @@ pub fn handle_event(mut state: &mut State, event: Event<()>, control_flow: &mut 
                 Err(e) => eprintln!("{:?}", e),
             }
         }
-        Event::MainEventsCleared => state.window().request_redraw(),
-        _ => ()
+        Event::MainEventsCleared if state.use_gpu() => state.window().request_redraw(),
+        _ => (),
     }
 }
 
@@ -50,6 +50,8 @@ fn handle_window_event(state: &mut State, control_flow: &mut ControlFlow, event:
     match event {
         WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
         WindowEvent::KeyboardInput { input, .. } => handle_keyboard_input(control_flow, input),
+        WindowEvent::MouseInput { button, state: ElementState::Pressed, .. } => handle_mouse_pressed(state, button),
+        WindowEvent::CursorMoved { position, .. } => state.set_mouse_position(*position),
         WindowEvent::Resized(physical_size) => state.resize(*physical_size),
         WindowEvent::ScaleFactorChanged { new_inner_size, .. } => state.resize(**new_inner_size),
         _ => ()
@@ -63,4 +65,14 @@ fn handle_keyboard_input(control_flow: &mut ControlFlow, input: &KeyboardInput) 
             _ => ()
         }
     }
+}
+
+fn handle_mouse_pressed(state: &mut State, button: &MouseButton) {
+    match button {
+        MouseButton::Left => state.zoom_in(),
+        MouseButton::Right => state.zoom_out(),
+        MouseButton::Middle => state.offset_to_mouse(),
+        _ => (),
+    }
+    state.window().request_redraw();
 }
