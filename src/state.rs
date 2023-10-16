@@ -8,7 +8,7 @@ use crate::{Args, util, ComplexNumber, palette};
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct JuliaUniforms {
-    c: ComplexNumber,
+    c: [f32; 2],
 }
 
 pub struct State {
@@ -28,7 +28,7 @@ pub struct State {
     num_vertices: u32,
     num_indices: u32,
     offset: ComplexNumber,
-    zoom: f32,
+    zoom: f64,
 }
 
 impl State {
@@ -83,7 +83,7 @@ impl State {
         let shader = device.create_shader_module(shader_module_descriptor);
 
         // uniforms
-        let julia_uniforms = JuliaUniforms { c: args.constant };
+        let julia_uniforms = JuliaUniforms { c: [args.constant[0] as f32, args.constant[1] as f32] };
         let julia_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Julia uniform buffer"),
             contents: bytemuck::cast_slice(&[julia_uniforms]),
@@ -216,7 +216,7 @@ impl State {
     pub fn update(&mut self) {
         if self.args.use_gpu { return; }
 
-        let iter_results: Vec<(u32, f32)> = self.vertices.iter()
+        let iter_results: Vec<(u32, f64)> = self.vertices.iter()
             .map(|v| v.translate_position(self.offset, self.zoom))
             .map(|z| util::julia_iter(z, self.args.constant, self.args.maximum_iterations))
             .collect();
@@ -228,7 +228,7 @@ impl State {
                 palette::linear_interpolate(
                     palette::pick(self.args.palette, exp_smoothing.floor() as usize),
                     palette::pick(self.args.palette, exp_smoothing.floor() as usize + 1),
-                    exp_smoothing % 1.0,
+                    exp_smoothing as f32 % 1.0,
                 )
             };
 
@@ -307,11 +307,11 @@ impl State {
     }
 
     pub fn offset_to_mouse(&mut self) {
-        let half_width = self.window.inner_size().width as f32 / 2.0;
-        let half_height = self.window.inner_size().height as f32 / 2.0;
+        let half_width = self.window.inner_size().width as f64 / 2.0;
+        let half_height = self.window.inner_size().height as f64 / 2.0;
         self.offset = [
-            self.offset[0] + (self.mouse_position.x as f32 / half_width - 1.0) * self.zoom,
-            self.offset[1] + (self.mouse_position.y as f32 / -half_height + 1.0) * self.zoom,
+            self.offset[0] + (self.mouse_position.x / half_width - 1.0) * self.zoom,
+            self.offset[1] + (self.mouse_position.y / -half_height + 1.0) * self.zoom,
         ];
     }
 }

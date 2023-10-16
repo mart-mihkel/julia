@@ -10,7 +10,7 @@ use winit::window::WindowBuilder;
 use crate::palette::Palette;
 use crate::state::State;
 
-type ComplexNumber = [f32; 2];
+type ComplexNumber = [f64; 2];
 type Rgb = [f32; 3];
 
 #[derive(Parser)]
@@ -44,8 +44,8 @@ impl Args {
         let err = |_| MESSAGE;
 
         Ok([
-            s[..loc].parse::<f32>().map_err(err)?,
-            s[loc..s.len() - 1].parse::<f32>().map_err(err)?
+            s[..loc].parse::<f64>().map_err(err)?,
+            s[loc..s.len() - 1].parse::<f64>().map_err(err)?
         ])
     }
 

@@ -5,16 +5,16 @@ use crate::{ComplexNumber, Rgb};
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {
-    position: ComplexNumber,
+    position: [f32; 2],
     color: Rgb,
 }
 
 impl Vertex {
-    pub fn new(position: ComplexNumber, color: Rgb) -> Self {
+    pub fn new(position: [f32; 2], color: Rgb) -> Self {
         Self { position, color }
     }
 
-    pub fn with_position(position: ComplexNumber) -> Self {
+    pub fn with_position(position: [f32; 2]) -> Self {
         Self { position, color: [0f32; 3] }
     }
 
@@ -29,7 +29,7 @@ impl Vertex {
                     format: VertexFormat::Float32x2,
                 },
                 VertexAttribute {
-                    offset: std::mem::size_of::<ComplexNumber>() as wgpu::BufferAddress,
+                    offset: std::mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
                     shader_location: 1,
                     format: VertexFormat::Float32x3,
                 }
@@ -75,11 +75,11 @@ impl Vertex {
         vertices
     }
 
-    pub fn translate_position(&self, offset: ComplexNumber, zoom: f32) -> ComplexNumber {
+    pub fn translate_position(&self, offset: ComplexNumber, zoom: f64) -> ComplexNumber {
         // todo bigdecimal
         [
-            self.position[0] * zoom + offset[0],
-            self.position[1] * zoom + offset[1],
+            self.position[0] as f64 * zoom + offset[0],
+            self.position[1] as f64 * zoom + offset[1],
         ]
     }
 

@@ -5,7 +5,7 @@ use winit::event_loop::ControlFlow;
 use crate::ComplexNumber;
 use crate::state::State;
 
-pub fn julia_iter(z: ComplexNumber, c: ComplexNumber, max_it: u32) -> (u32, f32) {
+pub fn julia_iter(z: ComplexNumber, c: ComplexNumber, max_it: u32) -> (u32, f64) {
     // todo use bigdecimal
     // todo reduce number of multiplications via algebraic simplifications
     let mut re = z[0];
