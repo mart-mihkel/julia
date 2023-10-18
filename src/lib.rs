@@ -31,10 +31,6 @@ pub struct Args {
     /// Window size
     #[arg(long, value_parser = Self::parse_resolution, default_value = "800:800")]
     resolution: PhysicalSize<f32>,
-
-    /// Perform Julia iteration in the shader, a tradeoff between speed and precision
-    #[arg(long, value_parser = Self::parse_bool, default_value = "no")]
-    use_gpu: bool,
 }
 
 impl Args {
@@ -47,15 +43,6 @@ impl Args {
             s[..loc].parse::<f64>().map_err(err)?,
             s[loc..s.len() - 1].parse::<f64>().map_err(err)?
         ])
-    }
-
-    fn parse_bool(s: &str) -> Result<bool, &'static str> {
-        const MESSAGE: &str = "yes/no";
-        match s {
-            "yes" => Ok(true),
-            "no" => Ok(false),
-            _ => Err(MESSAGE),
-        }
     }
 
     fn parse_palette(s: &str) -> Result<Palette, &'static str> {
