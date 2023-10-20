@@ -10,7 +10,6 @@ use winit::window::WindowBuilder;
 use crate::palette::Palette;
 use crate::state::State;
 
-type ComplexNumber = [f64; 2];
 type Rgb = [f32; 3];
 
 #[derive(Parser)]
@@ -18,7 +17,7 @@ type Rgb = [f32; 3];
 pub struct Args {
     /// Julia parameter
     #[arg(long, value_parser = Self::parse_complex_number, default_value = "0.4+0.1i")]
-    constant: ComplexNumber,
+    constant: [f32; 2],
 
     /// Maximum number of iterations per vertex when not using the shader
     #[arg(long, default_value_t = 250)]
@@ -34,14 +33,14 @@ pub struct Args {
 }
 
 impl Args {
-    fn parse_complex_number(s: &str) -> Result<ComplexNumber, &'static str> {
+    fn parse_complex_number(s: &str) -> Result<[f32; 2], &'static str> {
         const MESSAGE: &str = "constant must be a complex number in cartesian notation";
         let loc = s.rfind("+").or_else(|| s.rfind("-")).ok_or(MESSAGE)?;
         let err = |_| MESSAGE;
 
         Ok([
-            s[..loc].parse::<f64>().map_err(err)?,
-            s[loc..s.len() - 1].parse::<f64>().map_err(err)?
+            s[..loc].parse::<f32>().map_err(err)?,
+            s[loc..s.len() - 1].parse::<f32>().map_err(err)?
         ])
     }
 
