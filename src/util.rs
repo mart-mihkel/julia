@@ -50,5 +50,4 @@ fn handle_mouse_pressed(state: &mut State, button: &MouseButton) {
         MouseButton::Middle => state.offset_to_mouse(),
         _ => (),
     }
-    state.window().request_redraw();
 }

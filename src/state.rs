@@ -20,13 +20,11 @@ const UNIFORM_SIZE: u64 = std::mem::size_of::<JuliaUniform>() as u64;
 
 impl JuliaUniform {
     fn new(constant: [f32; 2], width: f32, height: f32) -> Self {
-        Self { constant, width, height, offset: [0f32; 2], zoom: 0f32, _pad: [0u8; 4] }
+        Self { constant, width, height, offset: [0f32; 2], zoom: 1f32, _pad: [0u8; 4] }
     }
 }
 
 pub struct State {
-    args: Args,
-
     surface: Surface,
     surface_config: SurfaceConfiguration,
     device: Device,
@@ -35,11 +33,12 @@ pub struct State {
     window: Window,
     size: PhysicalSize<u32>,
     mouse_position: PhysicalPosition<f64>,
-    uniform_buffer: Buffer,
 
+    uniform: JuliaUniform,
+    uniform_buffer: Buffer,
     render_bind_group: BindGroup,
-    compute_bind_group: BindGroup,
     render_pipeline: RenderPipeline,
+    compute_bind_group: BindGroup,
     compute_pipeline: ComputePipeline,
 }
 
@@ -130,7 +129,7 @@ impl State {
             multiview: None,
         });
 
-        // image
+        // texture to draw on
         let img = device.create_texture(&TextureDescriptor {
             label: Some("Image"),
             size: Extent3d {
@@ -148,6 +147,7 @@ impl State {
         let img_view = img.create_view(&Default::default());
 
         // uniforms
+        let uniform  = JuliaUniform::new(args.constant, size.width as f32, size.height as f32);
         let uniform_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Julia uniform buffer"),
             size: UNIFORM_SIZE,
@@ -155,6 +155,7 @@ impl State {
             mapped_at_creation: false,
         });
 
+        // compute
         let compute_shader = device.create_shader_module(include_wgsl!("compute.wgsl"));
         let compute_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("Compute bind group layout"),
@@ -228,8 +229,6 @@ impl State {
         });
 
         Self {
-            args,
-
             device,
             queue,
             surface,
@@ -238,11 +237,12 @@ impl State {
             window,
             size,
             mouse_position,
-            uniform_buffer,
 
+            uniform,
+            uniform_buffer,
             render_bind_group,
-            compute_bind_group,
             render_pipeline,
+            compute_bind_group,
             compute_pipeline,
         }
     }
@@ -251,11 +251,9 @@ impl State {
         let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("Compute encoder"),
         });
-
-        let julia_uniform = JuliaUniform::new(self.args.constant, self.size.width as f32, self.size.height as f32);
         let copy_uniform_buffer = self.device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Julia copy buffer"),
-            contents: bytemuck::bytes_of(&julia_uniform),
+            contents: bytemuck::bytes_of(&self.uniform),
             usage: BufferUsages::COPY_SRC,
         });
         encoder.copy_buffer_to_buffer(&copy_uniform_buffer, 0, &self.uniform_buffer, 0, UNIFORM_SIZE);
@@ -321,11 +319,11 @@ impl State {
     }
 
     pub fn zoom_in(&mut self) {
-        // self.uniforms.zoom *= 0.95;
+        self.uniform.zoom *= 0.95;
     }
 
     pub fn zoom_out(&mut self) {
-        // self.uniforms.zoom *= 1.05;
+        self.uniform.zoom *= 1.05;
     }
 
     pub fn set_mouse_position(&mut self, position: PhysicalPosition<f64>) {
@@ -333,11 +331,11 @@ impl State {
     }
 
     pub fn offset_to_mouse(&mut self) {
-        // let half_width = self.window.inner_size().width as f32 / 2.0;
-        // let half_height = self.window.inner_size().height as f32 / 2.0;
-        // self.uniforms.offset = [
-        //     self.uniforms.offset[0] + (self.mouse_position.x as f32 / half_width - 1.0) * self.uniforms.zoom,
-        //     self.uniforms.offset[1] + (self.mouse_position.y as f32 / -half_height + 1.0) * self.uniforms.zoom,
-        // ];
+        let half_width = self.window.inner_size().width as f32 / 2.0;
+        let half_height = self.window.inner_size().height as f32 / 2.0;
+        self.uniform.offset = [
+            self.uniform.offset[0] + (self.mouse_position.x as f32 / half_width - 1.0) * self.uniform.zoom,
+            self.uniform.offset[1] + (self.mouse_position.y as f32 / -half_height + 1.0) * self.uniform.zoom,
+        ];
     }
 }

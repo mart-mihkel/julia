@@ -20,7 +20,7 @@ fn cs_main(@builtin(global_invocation_id) global_index: vec3<u32>) {
     let fragment_coordinate: vec2<f32> = vec2<f32>(global_index.xy) / vec2<f32>(parameters.width, parameters.height) - vec2<f32>(0.5, 0.5);
 
     // todo
-    let color = vec4<f32>(0.0, 0.5, 0.0, 1.0);
+    let color = vec4<f32>(fragment_coordinate.x + 0.5, fragment_coordinate.y + 0.5, sin(parameters.zoom), 1.0);
 
     textureStore(output_texture, vec2<i32>(global_index.xy), color);
 }
