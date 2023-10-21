@@ -328,10 +328,9 @@ impl State {
     }
 
     pub fn zoom(&mut self, lines: f32) {
-        // todo account for the number of lines
         match lines.total_cmp(&0.0) {
-            Ordering::Greater => self.uniform.zoom *= 0.95,
-            Ordering::Less => self.uniform.zoom *= 1.05,
+            Ordering::Greater => self.uniform.zoom *= 0.85,
+            Ordering::Less => self.uniform.zoom *= 1.15,
             Ordering::Equal => (),
         }
     }
