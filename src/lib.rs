@@ -1,16 +1,11 @@
 mod util;
 mod state;
-mod vertex;
-mod palette;
 
 use clap::Parser;
 use winit::dpi::PhysicalSize;
 use winit::event_loop::EventLoop;
 use winit::window::WindowBuilder;
-use crate::palette::Palette;
 use crate::state::State;
-
-type Rgb = [f32; 3];
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -22,10 +17,6 @@ pub struct Args {
     /// Maximum number of iterations per vertex when not using the shader
     #[arg(long, default_value_t = 250)]
     maximum_iterations: u32,
-
-    /// Color palette
-    #[arg(long, value_parser = Self::parse_palette, default_value = "ultra-fractal")]
-    palette: Palette,
 
     /// Window size
     #[arg(long, value_parser = Self::parse_resolution, default_value = "800:800")]
@@ -42,15 +33,6 @@ impl Args {
             s[..loc].parse::<f32>().map_err(err)?,
             s[loc..s.len() - 1].parse::<f32>().map_err(err)?
         ])
-    }
-
-    fn parse_palette(s: &str) -> Result<Palette, &'static str> {
-        const MESSAGE: &str = "must be one of: ultra-fractal, green.";
-        match s {
-            "ultra-fractal" => Ok(Palette::UltraFractal),
-            "green" => Ok(Palette::Green),
-            _ => Err(MESSAGE),
-        }
     }
 
     fn parse_resolution(s: &str) -> Result<PhysicalSize<f32>, &'static str> {

@@ -17,7 +17,7 @@ pub fn handle_event(mut state: &mut State, event: Event<()>, control_flow: &mut 
                 Err(e) => eprintln!("{:?}", e),
             }
         }
-        Event::MainEventsCleared if state.use_gpu() => state.window().request_redraw(),
+        Event::MainEventsCleared => state.window().request_redraw(),
         _ => (),
     }
 }
