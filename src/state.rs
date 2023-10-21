@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::default::Default;
 use wgpu::{AddressMode, Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages, Color, CommandEncoderDescriptor, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, Device, DeviceDescriptor, Extent3d, Features, FilterMode, FragmentState, include_wgsl, Instance, InstanceDescriptor, LoadOp, MultisampleState, Operations, PipelineLayoutDescriptor, PowerPreference, PrimitiveState, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, SamplerBindingType, SamplerDescriptor, ShaderStages, StorageTextureAccess, Surface, SurfaceConfiguration, SurfaceError, TextureDescriptor, TextureDimension, TextureFormat, TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension, VertexState};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
@@ -318,12 +319,13 @@ impl State {
         self.size
     }
 
-    pub fn zoom_in(&mut self) {
-        self.uniform.zoom *= 0.95;
-    }
-
-    pub fn zoom_out(&mut self) {
-        self.uniform.zoom *= 1.05;
+    pub fn zoom(&mut self, lines: f32) {
+        // todo account for the number of lines
+        match lines.total_cmp(&0.0) {
+            Ordering::Greater => self.uniform.zoom *= 0.95,
+            Ordering::Less => self.uniform.zoom *= 1.05,
+            Ordering::Equal => (),
+        }
     }
 
     pub fn set_mouse_position(&mut self, position: PhysicalPosition<f64>) {
@@ -331,8 +333,8 @@ impl State {
     }
 
     pub fn offset_to_mouse(&mut self) {
-        let half_width = self.window.inner_size().width as f32 / 2.0;
-        let half_height = self.window.inner_size().height as f32 / 2.0;
+        let half_width = self.size().width as f32 / 2.0;
+        let half_height = self.size().height as f32 / 2.0;
         self.uniform.offset = [
             self.uniform.offset[0] + (self.mouse_position.x as f32 / half_width - 1.0) * self.uniform.zoom,
             self.uniform.offset[1] + (self.mouse_position.y as f32 / -half_height + 1.0) * self.uniform.zoom,

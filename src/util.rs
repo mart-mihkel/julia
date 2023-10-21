@@ -1,5 +1,5 @@
 use wgpu::SurfaceError;
-use winit::event::{ElementState, Event, KeyboardInput, MouseButton, VirtualKeyCode, WindowEvent};
+use winit::event::{ElementState, Event, KeyboardInput, MouseButton, MouseScrollDelta, TouchPhase, VirtualKeyCode, WindowEvent};
 use winit::event_loop::ControlFlow;
 use crate::state::State;
 
@@ -26,6 +26,7 @@ fn handle_window_event(state: &mut State, control_flow: &mut ControlFlow, event:
     match event {
         WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
         WindowEvent::KeyboardInput { input, .. } => handle_keyboard_input(control_flow, input),
+        WindowEvent::MouseWheel { delta, phase: TouchPhase::Moved, .. } => handle_mouse_scroll(state, delta),
         WindowEvent::MouseInput { button, state: ElementState::Pressed, .. } => handle_mouse_pressed(state, button),
         WindowEvent::CursorMoved { position, .. } => state.set_mouse_position(*position),
         WindowEvent::Resized(physical_size) => state.resize(*physical_size),
@@ -43,11 +44,16 @@ fn handle_keyboard_input(control_flow: &mut ControlFlow, input: &KeyboardInput) 
     }
 }
 
+fn handle_mouse_scroll(state: &mut State, delta: &MouseScrollDelta) {
+    match delta {
+        MouseScrollDelta::LineDelta(_, lines_vertical) => state.zoom(*lines_vertical),
+        MouseScrollDelta::PixelDelta(_) => (), // todo touchpad support
+    }
+}
+
 fn handle_mouse_pressed(state: &mut State, button: &MouseButton) {
     match button {
-        MouseButton::Left => state.zoom_in(),
-        MouseButton::Right => state.zoom_out(),
-        MouseButton::Middle => state.offset_to_mouse(),
+        MouseButton::Left => state.offset_to_mouse(),
         _ => (),
     }
 }
