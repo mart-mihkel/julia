@@ -1,5 +1,5 @@
 use std::default::Default;
-use wgpu::{AddressMode, Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BufferBindingType, BufferUsages, Color, CommandEncoderDescriptor, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, Device, DeviceDescriptor, Extent3d, Features, FilterMode, FragmentState, include_wgsl, Instance, InstanceDescriptor, LoadOp, MultisampleState, Operations, PipelineLayoutDescriptor, PowerPreference, PrimitiveState, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, SamplerBindingType, SamplerDescriptor, ShaderStages, StorageTextureAccess, Surface, SurfaceConfiguration, SurfaceError, TextureDescriptor, TextureDimension, TextureFormat, TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension, VertexState};
+use wgpu::{AddressMode, Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages, Color, CommandEncoderDescriptor, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, Device, DeviceDescriptor, Extent3d, Features, FilterMode, FragmentState, include_wgsl, Instance, InstanceDescriptor, LoadOp, MultisampleState, Operations, PipelineLayoutDescriptor, PowerPreference, PrimitiveState, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, SamplerBindingType, SamplerDescriptor, ShaderStages, StorageTextureAccess, Surface, SurfaceConfiguration, SurfaceError, TextureDescriptor, TextureDimension, TextureFormat, TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension, VertexState};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 use winit::window::Window;
@@ -16,6 +16,8 @@ struct JuliaUniform {
     _pad: [u8; 4], // the buffer has to be at least 32 bytes long?
 }
 
+const UNIFORM_SIZE: u64 = std::mem::size_of::<JuliaUniform>() as u64;
+
 impl JuliaUniform {
     fn new(constant: [f32; 2], width: f32, height: f32) -> Self {
         Self { constant, width, height, offset: [0f32; 2], zoom: 0f32, _pad: [0u8; 4] }
@@ -23,6 +25,8 @@ impl JuliaUniform {
 }
 
 pub struct State {
+    args: Args,
+
     surface: Surface,
     surface_config: SurfaceConfiguration,
     device: Device,
@@ -31,6 +35,7 @@ pub struct State {
     window: Window,
     size: PhysicalSize<u32>,
     mouse_position: PhysicalPosition<f64>,
+    uniform_buffer: Buffer,
 
     render_bind_group: BindGroup,
     compute_bind_group: BindGroup,
@@ -143,11 +148,11 @@ impl State {
         let img_view = img.create_view(&Default::default());
 
         // uniforms
-        let julia_uniform = JuliaUniform::new(args.constant, size.width as f32, size.height as f32);
-        let julia_uniform_buffer = device.create_buffer_init(&BufferInitDescriptor {
+        let uniform_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Julia uniform buffer"),
-            contents: bytemuck::cast_slice(&[julia_uniform]),
+            size: UNIFORM_SIZE,
             usage: BufferUsages::COPY_DST | BufferUsages::STORAGE | BufferUsages::UNIFORM,
+            mapped_at_creation: false,
         });
 
         let compute_shader = device.create_shader_module(include_wgsl!("compute.wgsl"));
@@ -194,7 +199,7 @@ impl State {
             entries: &[
                 BindGroupEntry {
                     binding: 0,
-                    resource: julia_uniform_buffer.as_entire_binding(),
+                    resource: uniform_buffer.as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 1,
@@ -223,6 +228,8 @@ impl State {
         });
 
         Self {
+            args,
+
             device,
             queue,
             surface,
@@ -231,6 +238,7 @@ impl State {
             window,
             size,
             mouse_position,
+            uniform_buffer,
 
             render_bind_group,
             compute_bind_group,
@@ -243,6 +251,14 @@ impl State {
         let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("Compute encoder"),
         });
+
+        let julia_uniform = JuliaUniform::new(self.args.constant, self.size.width as f32, self.size.height as f32);
+        let copy_uniform_buffer = self.device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Julia copy buffer"),
+            contents: bytemuck::bytes_of(&julia_uniform),
+            usage: BufferUsages::COPY_SRC,
+        });
+        encoder.copy_buffer_to_buffer(&copy_uniform_buffer, 0, &self.uniform_buffer, 0, UNIFORM_SIZE);
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
