@@ -1,31 +1,7 @@
-use std::ops::Neg;
 use wgpu::SurfaceError;
-use winit::event::{ElementState, Event, KeyboardInput, MouseButton, VirtualKeyCode, WindowEvent};
+use winit::event::{ElementState, Event, KeyboardInput, MouseButton, MouseScrollDelta, TouchPhase, VirtualKeyCode, WindowEvent};
 use winit::event_loop::ControlFlow;
-use crate::ComplexNumber;
 use crate::state::State;
-
-pub fn julia_iter(z: ComplexNumber, c: ComplexNumber, max_it: u32) -> (u32, f64) {
-    // todo use bigdecimal
-    // todo reduce number of multiplications via algebraic simplifications
-    let mut re = z[0];
-    let mut im = z[1];
-
-    let mut modulus = (re * re + im * im).sqrt();
-    let mut exp_smoothing = modulus.neg().exp();
-    let mut it = 0;
-    while it < max_it && modulus < 2.0 {
-        let temp = re;
-        re = temp * temp - im * im + c[0];
-        im = 2.0 * im * temp + c[1];
-
-        modulus = (re * re + im * im).sqrt();
-        exp_smoothing += modulus.neg().exp();
-        it += 1;
-    }
-
-    (it, exp_smoothing)
-}
 
 pub fn handle_event(mut state: &mut State, event: Event<()>, control_flow: &mut ControlFlow) {
     match event {
@@ -41,7 +17,7 @@ pub fn handle_event(mut state: &mut State, event: Event<()>, control_flow: &mut 
                 Err(e) => eprintln!("{:?}", e),
             }
         }
-        Event::MainEventsCleared if state.use_gpu() => state.window().request_redraw(),
+        Event::MainEventsCleared => state.window().request_redraw(),
         _ => (),
     }
 }
@@ -49,7 +25,8 @@ pub fn handle_event(mut state: &mut State, event: Event<()>, control_flow: &mut 
 fn handle_window_event(state: &mut State, control_flow: &mut ControlFlow, event: &WindowEvent) {
     match event {
         WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
-        WindowEvent::KeyboardInput { input, .. } => handle_keyboard_input(control_flow, input),
+        WindowEvent::KeyboardInput { input, .. } => handle_keyboard_input(state, control_flow, input),
+        WindowEvent::MouseWheel { delta, phase: TouchPhase::Moved, .. } => handle_mouse_scroll(state, delta),
         WindowEvent::MouseInput { button, state: ElementState::Pressed, .. } => handle_mouse_pressed(state, button),
         WindowEvent::CursorMoved { position, .. } => state.set_mouse_position(*position),
         WindowEvent::Resized(physical_size) => state.resize(*physical_size),
@@ -58,21 +35,29 @@ fn handle_window_event(state: &mut State, control_flow: &mut ControlFlow, event:
     }
 }
 
-fn handle_keyboard_input(control_flow: &mut ControlFlow, input: &KeyboardInput) {
+fn handle_keyboard_input(state: &mut State, control_flow: &mut ControlFlow, input: &KeyboardInput) {
     if let Some(key) = input.virtual_keycode {
         match key {
             VirtualKeyCode::Escape => *control_flow = ControlFlow::Exit,
+            VirtualKeyCode::Up => state.scaled_add_im_constant(0.01),
+            VirtualKeyCode::Down => state.scaled_add_im_constant(-0.01),
+            VirtualKeyCode::Left => state.scaled_add_re_constant(-0.01),
+            VirtualKeyCode::Right => state.scaled_add_re_constant(0.01),
             _ => ()
         }
     }
 }
 
+fn handle_mouse_scroll(state: &mut State, delta: &MouseScrollDelta) {
+    match delta {
+        MouseScrollDelta::LineDelta(_, lines_vertical) => state.zoom(*lines_vertical),
+        MouseScrollDelta::PixelDelta(_) => (), // todo touchpad support
+    }
+}
+
 fn handle_mouse_pressed(state: &mut State, button: &MouseButton) {
     match button {
-        MouseButton::Left => state.zoom_in(),
-        MouseButton::Right => state.zoom_out(),
-        MouseButton::Middle => state.offset_to_mouse(),
+        MouseButton::Left => state.offset_to_mouse(),
         _ => (),
     }
-    state.window().request_redraw();
 }
