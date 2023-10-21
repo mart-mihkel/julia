@@ -319,6 +319,14 @@ impl State {
         }
     }
 
+    pub fn scaled_add_re_constant(&mut self, delta: f32) {
+        self.uniform.constant[0] += delta * self.uniform.zoom;
+    }
+
+    pub fn scaled_add_im_constant(&mut self, delta: f32) {
+        self.uniform.constant[1] += delta * self.uniform.zoom;
+    }
+
     pub fn window(&self) -> &Window {
         &self.window
     }

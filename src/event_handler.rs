@@ -25,7 +25,7 @@ pub fn handle_event(mut state: &mut State, event: Event<()>, control_flow: &mut 
 fn handle_window_event(state: &mut State, control_flow: &mut ControlFlow, event: &WindowEvent) {
     match event {
         WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
-        WindowEvent::KeyboardInput { input, .. } => handle_keyboard_input(control_flow, input),
+        WindowEvent::KeyboardInput { input, .. } => handle_keyboard_input(state, control_flow, input),
         WindowEvent::MouseWheel { delta, phase: TouchPhase::Moved, .. } => handle_mouse_scroll(state, delta),
         WindowEvent::MouseInput { button, state: ElementState::Pressed, .. } => handle_mouse_pressed(state, button),
         WindowEvent::CursorMoved { position, .. } => state.set_mouse_position(*position),
@@ -35,10 +35,14 @@ fn handle_window_event(state: &mut State, control_flow: &mut ControlFlow, event:
     }
 }
 
-fn handle_keyboard_input(control_flow: &mut ControlFlow, input: &KeyboardInput) {
+fn handle_keyboard_input(state: &mut State, control_flow: &mut ControlFlow, input: &KeyboardInput) {
     if let Some(key) = input.virtual_keycode {
         match key {
             VirtualKeyCode::Escape => *control_flow = ControlFlow::Exit,
+            VirtualKeyCode::Up => state.scaled_add_im_constant(0.01),
+            VirtualKeyCode::Down => state.scaled_add_im_constant(-0.01),
+            VirtualKeyCode::Left => state.scaled_add_re_constant(-0.01),
+            VirtualKeyCode::Right => state.scaled_add_re_constant(0.01),
             _ => ()
         }
     }

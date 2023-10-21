@@ -1,4 +1,4 @@
-mod util;
+mod event_handler;
 mod state;
 
 use clap::Parser;
@@ -59,5 +59,5 @@ pub async fn run() {
 
     let mut state = State::new(args, window).await;
 
-    event_loop.run(move |event, _, control_flow| util::handle_event(&mut state, event, control_flow));
+    event_loop.run(move |event, _, control_flow| event_handler::handle_event(&mut state, event, control_flow));
 }
