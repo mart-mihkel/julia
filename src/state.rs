@@ -6,6 +6,15 @@ use winit::dpi::{PhysicalPosition, PhysicalSize};
 use winit::window::Window;
 use crate::Args;
 
+const UNIFORM_SIZE: u64 = std::mem::size_of::<JuliaUniform>() as u64;
+const PALETTE: [[f32; 4]; 5] = [
+    [0.0, 0.03, 0.39, 1.0],
+    [0.12, 0.42, 0.8, 1.0],
+    [0.93, 1.0, 1.0, 1.0],
+    [1.0, 0.67, 0.0, 1.0],
+    [0.0, 0.01, 0.0, 1.0],
+];
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct JuliaUniform {
@@ -14,14 +23,13 @@ struct JuliaUniform {
     width: f32,
     height: f32,
     zoom: f32,
-    _pad: [u8; 4], // the buffer has to be at least 32 bytes long?
+    palette: [[f32; 4]; 5],
+    _pad: [u8; 4],
 }
-
-const UNIFORM_SIZE: u64 = std::mem::size_of::<JuliaUniform>() as u64;
 
 impl JuliaUniform {
     fn new(constant: [f32; 2], width: f32, height: f32) -> Self {
-        Self { constant, width, height, offset: [0f32; 2], zoom: 1f32, _pad: [0u8; 4] }
+        Self { constant, width, height, offset: [0f32; 2], zoom: 1f32, palette: PALETTE, _pad: [0u8; 4] }
     }
 }
 
@@ -56,7 +64,7 @@ impl State {
         let surface = unsafe { instance.create_surface(&window) }.unwrap();
 
         let adapter = instance.request_adapter(&RequestAdapterOptions {
-            power_preference: PowerPreference::default(),
+            power_preference: PowerPreference::HighPerformance,
             compatible_surface: Some(&surface),
             force_fallback_adapter: false,
         }).await.unwrap();
@@ -148,7 +156,7 @@ impl State {
         let img_view = img.create_view(&Default::default());
 
         // uniforms
-        let uniform  = JuliaUniform::new(args.constant, size.width as f32, size.height as f32);
+        let uniform = JuliaUniform::new(args.constant, size.width as f32, size.height as f32);
         let uniform_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Julia uniform buffer"),
             size: UNIFORM_SIZE,

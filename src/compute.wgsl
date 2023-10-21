@@ -4,6 +4,7 @@ struct JuliaUniform {
     width: f32,
     height: f32,
     zoom: f32,
+    palette: array<vec4<f32>, 5>,
 }
 
 @group(0)
@@ -19,35 +20,40 @@ var output_texture: texture_storage_2d<rgba8unorm, write>;
 fn cs_main(@builtin(global_invocation_id) global_index: vec3<u32>) {
     let fragment_coordinate: vec2<f32> = vec2<f32>(global_index.xy) / vec2<f32>(parameters.width / 2.0, parameters.height / 2.0) - vec2<f32>(1.0, 1.0);
 
-    let color = vec4<f32>(iter(fragment_coordinate), 0.0, 0.0, 1.0);
+    let smoothing: f32 = julia_iter(fragment_coordinate);
+    let i1: i32 = i32(smoothing) % 5;
+    let i2: i32 = i32(smoothing + 1.0) % 5;
+    let color = mix(parameters.palette[i1], parameters.palette[i2], smoothing % 1.0);
 
     textureStore(output_texture, vec2<i32>(global_index.xy), color);
 }
 
-fn iter(fragment_coordinate: vec2<f32>) -> f32 {
+fn julia_iter(fragment_coordinate: vec2<f32>) -> f32 {
     var re: f32 = fragment_coordinate.x * parameters.zoom + parameters.offset.x;
     var im: f32 = fragment_coordinate.y * parameters.zoom - parameters.offset.y;
 
     let re_c = parameters.constant.x;
     let im_c = parameters.constant.y;
 
-    var dist2: f32 = re * re + im * im;
+    var dist: f32 = sqrt(re * re + im * im);
+    var smoothing: f32 = exp(-dist);
     var it: i32 = 0;
 
     loop {
-        if (it == 1024 || dist2 >= 4.0) {
+        if (it == 1024 || dist >= 2.0) {
             break;
         }
 
-        var temp = re;
+        let temp = re;
         re = temp * temp - im * im + re_c;
         im = 2.0 * im * temp + im_c;
 
         continuing {
-            dist2 = re * re + im * im;
+            dist = sqrt(re * re + im * im);
+            smoothing += exp(-dist);
             it++;
         }
     }
 
-    return f32(it) / 1024.0;
+    return smoothing;
 }
