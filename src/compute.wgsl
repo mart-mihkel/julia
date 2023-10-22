@@ -49,7 +49,7 @@ fn julia_iter(fragment_coordinate: vec2<f32>) -> f32 {
         if (it == max_it) { return -1.0; } // color the fragment black if it's in the set
         if (modulus >= 2.0) { break; }
 
-        z = powi_complex(z, 4u) + parameters.constant;
+        z = powi_complex(z, 2u) + parameters.constant;
 
         continuing {
             modulus = sqrt(modulus_square(z));
