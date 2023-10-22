@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 use std::default::Default;
+use std::time::Instant;
 use wgpu::{AddressMode, Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages, Color, CommandEncoderDescriptor, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, Device, DeviceDescriptor, Extent3d, Features, FilterMode, FragmentState, include_wgsl, Instance, InstanceDescriptor, LoadOp, MultisampleState, Operations, PipelineLayoutDescriptor, PowerPreference, PrimitiveState, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, SamplerBindingType, SamplerDescriptor, ShaderStages, StorageTextureAccess, Surface, SurfaceConfiguration, SurfaceError, TextureDescriptor, TextureDimension, TextureFormat, TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension, VertexState};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use winit::dpi::{PhysicalPosition, PhysicalSize};
@@ -34,6 +35,7 @@ pub struct State {
     window: Window,
     size: PhysicalSize<u32>,
     mouse_position: PhysicalPosition<f64>,
+    render_instant: Instant,
 
     uniform: JuliaUniform,
     uniform_buffer: Buffer,
@@ -227,6 +229,7 @@ impl State {
                 BindGroupEntry { binding: 1, resource: BindingResource::Sampler(&sampler) },
             ],
         });
+        let render_instant = Instant::now();
 
         Self {
             device,
@@ -237,6 +240,7 @@ impl State {
             window,
             size,
             mouse_position,
+            render_instant,
 
             uniform,
             uniform_buffer,
@@ -298,7 +302,15 @@ impl State {
         self.queue.submit(Some(encoder.finish()));
         output.present();
 
+        self.count_fps();
+        self.render_instant = Instant::now();
+
         Ok(())
+    }
+
+    fn count_fps(&self) {
+        let fps = self.render_instant.elapsed().as_secs_f32().powi(-1);
+        print!("fps: {:.0} \r", fps);
     }
 
     pub fn resize(&mut self, new_size: PhysicalSize<u32>) {
