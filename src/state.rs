@@ -7,13 +7,6 @@ use winit::window::Window;
 use crate::Args;
 
 const UNIFORM_SIZE: u64 = std::mem::size_of::<JuliaUniform>() as u64;
-const PALETTE: [[f32; 4]; 5] = [
-    [0.0, 0.03, 0.39, 1.0],
-    [0.12, 0.42, 0.8, 1.0],
-    [0.93, 1.0, 1.0, 1.0],
-    [1.0, 0.67, 0.0, 1.0],
-    [0.0, 0.01, 0.0, 1.0],
-];
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -23,13 +16,12 @@ struct JuliaUniform {
     width: f32,
     height: f32,
     zoom: f32,
-    palette: [[f32; 4]; 5],
-    _pad: [u8; 4],
+    _padding: [u8; 4], // shader expects buffer to be 32 bytes
 }
 
 impl JuliaUniform {
     fn new(constant: [f32; 2], width: f32, height: f32) -> Self {
-        Self { constant, width, height, offset: [0f32; 2], zoom: 1f32, palette: PALETTE, _pad: [0u8; 4] }
+        Self { constant, width, height, offset: [0f32; 2], zoom: 1f32, _padding: [0u8; 4] }
     }
 }
 
@@ -53,7 +45,6 @@ pub struct State {
 
 impl State {
     pub async fn new(args: Args, window: Window) -> Self {
-        // the instance is a handle to our GPU
         let instance = Instance::new(InstanceDescriptor {
             backends: Backends::VULKAN,
             dx12_shader_compiler: Default::default(),
